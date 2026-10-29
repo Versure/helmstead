@@ -4,6 +4,6 @@ import { Component } from '@angular/core';
   selector: 'hs-ui',
   imports: [],
   templateUrl: './ui.html',
-  styleUrl: './ui.scss',
+  styleUrl: './ui.css',
 })
 export class Ui {}

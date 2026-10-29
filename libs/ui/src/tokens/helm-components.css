@@ -1,0 +1,23 @@
+/*
+ * Measurements of Helm components that have no design-system token of their own, ported from the Helm design
+ * system's components/bundle.css (https://claude.ai/artifact/XQDpkg4gRzfwJRABL1gxjg). Only the components the app
+ * uses so far: StatusPill and the small secondary Button.
+ */
+:root {
+  /* StatusPill (.hm-pill) */
+  --helm-pill-height: 22px;
+  --helm-pill-padding-start: 8px;
+  --helm-pill-padding-end: 9px;
+  --helm-pill-gap: 6px;
+  --helm-pill-letter-spacing: 0.06em;
+  --helm-pill-dot-size: 7px;
+  --helm-radius-round: 50%;
+
+  /* Button, size sm (.hm-btn--sm) */
+  --helm-button-height-sm: 28px;
+  --helm-button-font-weight: 600;
+
+  /* Focus ring: 2px solid focus colour, 2px offset (README, States and motion) */
+  --helm-focus-ring-width: 2px;
+  --helm-focus-ring-offset: 2px;
+}
