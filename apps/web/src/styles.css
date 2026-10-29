@@ -1,1 +1,11 @@
-/* You can add global styles to this file, and also import other style files */
+/* Global styles. The Helm tokens are loaded before this file (project.json, build.options.styles). */
+body {
+  margin: 0;
+  min-height: 100vh;
+  background: var(--helm-ground);
+  color: var(--helm-ink);
+  font-family: var(--helm-font-sans);
+  font-size: var(--helm-font-size-body);
+  line-height: var(--helm-line-height-body);
+  font-variant-numeric: tabular-nums;
+}

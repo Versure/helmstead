@@ -4,7 +4,7 @@
   "projectType": "application",
   "prefix": "hs",
   "sourceRoot": "apps/web/src",
-  "tags": ["scope:web"],
+  "tags": ["scope:web", "type:app"],
   "targets": {
     "build": {
       "executor": "@angular/build:application",
@@ -14,14 +14,18 @@
         "outputPath": "dist/apps/web",
         "browser": "apps/web/src/main.ts",
         "tsConfig": "apps/web/tsconfig.app.json",
-        "inlineStyleLanguage": "scss",
+        "inlineStyleLanguage": "css",
         "assets": [
           {
             "glob": "**/*",
             "input": "apps/web/public"
           }
         ],
-        "styles": ["apps/web/src/styles.scss"]
+        "styles": [
+          "libs/ui/src/tokens/helm-tokens.css",
+          "libs/ui/src/tokens/helm-components.css",
+          "apps/web/src/styles.css"
+        ]
       },
       "configurations": {
         "production": {
@@ -60,6 +64,9 @@
         "development": {
           "buildTarget": "web:build:development"
         }
+      },
+      "options": {
+        "proxyConfig": "apps/web/proxy.conf.json"
       }
     },
     "test": {
@@ -81,5 +88,6 @@
         "spa": true
       }
     }
-  }
+  },
+  "implicitDependencies": ["ui"]
 }

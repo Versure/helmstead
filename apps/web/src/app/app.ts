@@ -1,13 +1,12 @@
-import { Component } from '@angular/core';
-import { RouterModule } from '@angular/router';
-import { NxWelcome } from './nx-welcome';
+import { ChangeDetectionStrategy, Component } from '@angular/core';
+import { RouterOutlet } from '@angular/router';
+import { SystemStatusComponent } from '@helmstead/system-feature';
 
 @Component({
-  imports: [NxWelcome, RouterModule],
+  imports: [RouterOutlet, SystemStatusComponent],
   selector: 'hs-root',
   templateUrl: './app.html',
-  styleUrl: './app.scss',
+  styleUrl: './app.css',
+  changeDetection: ChangeDetectionStrategy.OnPush,
 })
-export class App {
-  protected title = 'web';
-}
+export class App {}

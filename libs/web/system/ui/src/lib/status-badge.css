@@ -1,0 +1,76 @@
+/* Ported from the Helm design system's StatusPill (.hm-pill) and small secondary Button (.hm-btn--secondary.hm-btn--sm). */
+:host {
+  display: inline-block;
+}
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--helm-space-2);
+}
+
+.pill {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--helm-pill-gap);
+  height: var(--helm-pill-height);
+  padding: 0 var(--helm-pill-padding-end) 0 var(--helm-pill-padding-start);
+  border-radius: var(--helm-radius-pill);
+  font-family: var(--helm-font-sans);
+  font-size: var(--helm-font-size-label);
+  font-weight: var(--helm-font-weight-label);
+  line-height: 1;
+  letter-spacing: var(--helm-pill-letter-spacing);
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.dot {
+  flex: none;
+  width: var(--helm-pill-dot-size);
+  height: var(--helm-pill-dot-size);
+  border-radius: var(--helm-radius-round);
+  background: currentColor;
+}
+
+.pill--warn {
+  background: var(--helm-warn-tint);
+  color: var(--helm-warn);
+}
+
+.pill--info {
+  background: var(--helm-signal-tint);
+  color: var(--helm-signal);
+}
+
+.pill--danger {
+  background: var(--helm-danger-tint);
+  color: var(--helm-danger);
+}
+
+.button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: var(--helm-button-height-sm);
+  padding: 0 var(--helm-space-3);
+  border: 1px solid var(--helm-line-strong);
+  border-radius: var(--helm-radius-sm);
+  background: var(--helm-surface-raised);
+  color: var(--helm-ink);
+  font-family: var(--helm-font-sans);
+  font-size: var(--helm-font-size-body-sm);
+  font-weight: var(--helm-button-font-weight);
+  line-height: 1;
+  cursor: pointer;
+  transition: border-color 0.15s ease;
+}
+
+.button:hover {
+  border-color: var(--helm-signal);
+}
+
+.button:focus-visible {
+  outline: var(--helm-focus-ring-width) solid var(--helm-focus);
+  outline-offset: var(--helm-focus-ring-offset);
+}
