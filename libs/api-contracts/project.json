@@ -1,0 +1,35 @@
+{
+  "name": "api-contracts",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "libs/api-contracts/src",
+  "projectType": "library",
+  "tags": ["scope:shared"],
+  "implicitDependencies": ["core"],
+  "targets": {
+    "build": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "tsc -p libs/api-contracts/tsconfig.lib.json --noEmit"
+      }
+    },
+    "generate": {
+      "executor": "nx:run-commands",
+      "dependsOn": [{ "projects": ["core"], "target": "build" }],
+      "options": {
+        "command": "openapi-typescript libs/api-contracts/openapi.json --output libs/api-contracts/src/generated/api.ts"
+      }
+    },
+    "check": {
+      "executor": "nx:run-commands",
+      "cache": false,
+      "dependsOn": ["generate"],
+      "options": {
+        "commands": [
+          "git add --intent-to-add -- libs/api-contracts/openapi.json libs/api-contracts/src/generated",
+          "git diff --exit-code HEAD -- libs/api-contracts/openapi.json libs/api-contracts/src/generated"
+        ],
+        "parallel": false
+      }
+    }
+  }
+}

@@ -9,19 +9,37 @@ permissions:
   contents: read
 
 jobs:
-  ci:
-    runs-on: ubuntu-latest
+  verify:
+    name: verify (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      # A failure on one OS must not hide the result on the others.
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-      - id: workspace
-        run: |
-          if [ -f nx.json ]; then echo "present=true" >> "$GITHUB_OUTPUT"; else echo "present=false" >> "$GITHUB_OUTPUT"; fi
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-      # Phase 0 adds the toolchains here (.NET, Rust for Tauri) along with the Nx workspace.
-      - if: steps.workspace.outputs.present == 'true'
-        run: npm ci
+          cache: npm
+      - uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+      - run: npm ci
+      # CI is set by GitHub, so verify.mjs runs every project here, not only the affected ones.
       - run: node scripts/sdlc/verify.mjs --base ${{ github.event.pull_request.base.sha || 'HEAD~1' }}
+
+  # Branch protection requires a check named `ci`. This job is that check: it is green only when the
+  # verify job passed on every OS, and it is red (not skipped) when any of them failed or was cancelled.
+  ci:
+    name: ci
+    needs: verify
+    if: ${{ always() }}
+    runs-on: ubuntu-latest
+    steps:
+      - run: |
+          echo "verify result: ${{ needs.verify.result }}"
+          test "${{ needs.verify.result }}" = "success"

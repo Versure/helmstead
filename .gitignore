@@ -4,3 +4,16 @@
 CLAUDE.local.md
 .claude/settings.local.json
 .claude/worktrees/
+
+.angular
+node_modules/
+dist/
+tmp/
+.nx/
+bin/
+obj/
+TestResults/
+
+__screenshots__/
+vitest.config.*.timestamp*
+.vitest

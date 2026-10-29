@@ -1,0 +1,31 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="coverlet.collector" />
+    <PackageReference Include="Microsoft.AspNetCore.Mvc.Testing" />
+    <PackageReference Include="Microsoft.NET.Test.Sdk" />
+    <PackageReference Include="TngTech.ArchUnitNET.xUnit" />
+    <PackageReference Include="xunit" />
+    <PackageReference Include="xunit.runner.visualstudio" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Using Include="Xunit" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Every project under src/ is referenced by glob, so the architecture tests cover a project added later
+         without editing this file. Their assemblies land in the test output folder and are found by name. -->
+    <ProjectReference Include="..\..\src\**\*.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Deliberately violating assemblies for the negative architecture tests. Never scanned as real code. -->
+    <ProjectReference Include="..\fixtures\*\*.csproj" />
+  </ItemGroup>
+
+</Project>

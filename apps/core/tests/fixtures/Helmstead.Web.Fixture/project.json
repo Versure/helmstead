@@ -1,0 +1,5 @@
+{
+  "name": "Helmstead.Web.Fixture",
+  "$schema": "../../../../node_modules/nx/schemas/project-schema.json",
+  "tags": ["scope:core"]
+}

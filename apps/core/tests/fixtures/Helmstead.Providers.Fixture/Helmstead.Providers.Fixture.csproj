@@ -1,0 +1,12 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Helmstead.Agents.Fixture\Helmstead.Agents.Fixture.csproj" />
+    <ProjectReference Include="..\Helmstead.Connectors.FixtureB\Helmstead.Connectors.FixtureB.csproj" />
+  </ItemGroup>
+
+</Project>

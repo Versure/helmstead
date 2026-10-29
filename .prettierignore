@@ -1,0 +1,18 @@
+# Build output and tooling
+/dist
+/tmp
+/.nx
+/.angular
+/.sdlc
+/node_modules
+/package-lock.json
+/.claude
+/.github
+/scripts
+/docs
+
+# .NET is formatted by `dotnet format`, and the OpenAPI document is generated
+bin/
+obj/
+/libs/api-contracts/openapi.json
+/libs/api-contracts/src/generated

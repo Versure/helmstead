@@ -1,0 +1,16 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- The fixtures use the real CQRS contracts, so the rules are tried against the types they will meet. -->
+    <ProjectReference Include="..\..\..\src\Helmstead.Core.Api\Helmstead.Core.Api.csproj" />
+  </ItemGroup>
+
+</Project>
