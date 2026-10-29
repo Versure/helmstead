@@ -11,7 +11,16 @@ export default [
     ignores: ['**/dist', '**/out-tsc', '**/vitest.config.*.timestamp*'],
   },
   {
-    files: ['**/*.ts', '**/*.tsx', '**/*.js', '**/*.jsx'],
+    files: [
+      '**/*.ts',
+      '**/*.tsx',
+      '**/*.cts',
+      '**/*.mts',
+      '**/*.js',
+      '**/*.jsx',
+      '**/*.cjs',
+      '**/*.mjs',
+    ],
     rules: {
       '@nx/enforce-module-boundaries': [
         'error',
@@ -50,9 +59,17 @@ export default [
     ],
     plugins: { '@eslint-community/eslint-comments': eslintComments },
     rules: {
+      // Only line-scoped disables are allowed at all: no `/* eslint rule: 'off' */`, no file-level
+      // `/* eslint-disable */`, no `/* eslint-enable */`. That leaves no way to switch a rule off for a file.
+      '@eslint-community/eslint-comments/no-use': [
+        'error',
+        { allow: ['eslint-disable-line', 'eslint-disable-next-line'] },
+      ],
+      // The boundary rule, and the rules that protect it, cannot be disabled even for one line.
       '@eslint-community/eslint-comments/no-restricted-disable': [
         'error',
         '@nx/enforce-module-boundaries',
+        '@eslint-community/eslint-comments/*',
       ],
     },
   },

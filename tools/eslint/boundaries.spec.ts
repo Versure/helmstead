@@ -76,15 +76,32 @@ describe('switching the boundary rule off', () => {
       how: 'a file-level disable of every rule',
       code: `/* eslint-disable */\n${forbiddenImport}`,
     },
+    {
+      how: 'an inline config comment that sets the rule to off',
+      code: `/* eslint ${BOUNDARIES}: 'off' */\n${forbiddenImport}`,
+    },
+    {
+      how: 'a file-level disable of the ban itself, then of the rule',
+      code: `/* eslint-disable ${NO_DISABLE} */\n/* eslint-disable ${BOUNDARIES} */\n${forbiddenImport}`,
+    },
+    {
+      how: 'an inline config comment that turns the ban off',
+      code: `/* eslint ${NO_DISABLE}: 'off' */\n/* eslint-disable ${BOUNDARIES} */\n${forbiddenImport}`,
+    },
+    {
+      how: 'a line-level disable of the ban, then of the rule',
+      code: `// eslint-disable-next-line ${NO_DISABLE}\n/* eslint-disable ${BOUNDARIES} */\n${forbiddenImport}`,
+    },
   ])('fails lint for $how', async ({ code }) => {
     const messages = await lintFixture('apps/web/src/fixture.ts', code);
 
-    const problems = [
-      ...errorsOf(messages, NO_DISABLE),
-      ...errorsOf(messages, BOUNDARIES),
-    ];
+    // Lint must fail, and it must fail on the comment itself or on the import it tried to hide.
+    const problems = messages.filter(
+      (m) =>
+        m.ruleId === BOUNDARIES ||
+        m.ruleId?.startsWith('@eslint-community/eslint-comments/'),
+    );
     expect(problems.length).toBeGreaterThan(0);
-    expect(errorsOf(messages, NO_DISABLE).length).toBeGreaterThan(0);
   });
 
   it('still allows disabling other rules', async () => {
