@@ -1,0 +1,22 @@
+{
+  "name": "core",
+  "$schema": "../../../../node_modules/nx/schemas/project-schema.json",
+  "tags": ["scope:core"],
+  "targets": {
+    "lint": {
+      "executor": "nx:run-commands",
+      "cache": false,
+      "options": {
+        "command": "dotnet format apps/core/src/Helmstead.Core.Api/Helmstead.Core.Api.csproj --verify-no-changes --no-restore"
+      }
+    },
+    "serve": {
+      "executor": "nx:run-commands",
+      "continuous": true,
+      "options": {
+        "cwd": "apps/core/src/Helmstead.Core.Api",
+        "command": "dotnet run --launch-profile http"
+      }
+    }
+  }
+}

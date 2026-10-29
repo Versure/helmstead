@@ -56,6 +56,8 @@ const nx = binOf('nx');
 const steps = [
   { name: 'guard rails (scope tags, lint boundaries)', bin: binOf('vitest'), args: ['run', '--config', 'tools/vitest.config.mts'] },
   { name: 'format check', bin: nx, args: ['format:check'] },
+  // The @nx/dotnet targets build with --no-restore, so the NuGet packages are restored once, here.
+  { name: 'restore NuGet packages', command: 'dotnet', args: ['restore', 'apps/core/Helmstead.Core.slnx', '--nologo'] },
   runAll
     ? { name: 'lint, test, build and contract check of all projects', bin: nx, args: ['run-many', '-t', ...targets] }
     : { name: `lint, test, build and contract check of affected projects (base ${base})`, bin: nx, args: ['affected', '-t', ...targets, `--base=${base}`] },
@@ -63,7 +65,8 @@ const steps = [
 
 let output = '';
 for (const step of steps) {
-  const run = spawnSync(process.execPath, [step.bin, ...step.args], {
+  const [file, fileArgs] = step.command ? [step.command, step.args] : [process.execPath, [step.bin, ...step.args]];
+  const run = spawnSync(file, fileArgs, {
     encoding: 'utf8',
     maxBuffer: 64 * 1024 * 1024,
     env: { ...process.env, NX_DAEMON: 'false' },

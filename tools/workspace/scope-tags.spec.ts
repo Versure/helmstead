@@ -51,9 +51,18 @@ describe('the workspace', () => {
       tags: node.data.tags ?? [],
     }));
 
+    // Every .NET project is an Nx project (the @nx/dotnet plugin infers them from the .csproj files). A new
+    // project has to be added here on purpose, with its scope tag next to it.
     expect(projects.map((p) => p.name).sort()).toEqual([
+      'Helmstead.Agents.Fixture',
+      'Helmstead.Connectors.FixtureA',
+      'Helmstead.Connectors.FixtureB',
+      'Helmstead.Core.Api.Fixture',
+      'Helmstead.Providers.Fixture',
+      'Helmstead.Web.Fixture',
       'api-contracts',
       'core',
+      'core-tests',
       'ui',
       'web',
     ]);
@@ -68,6 +77,7 @@ describe('the workspace', () => {
     expect(scopeOf('web')).toEqual(['scope:web']);
     expect(scopeOf('ui')).toEqual(['scope:web']);
     expect(scopeOf('core')).toEqual(['scope:core']);
+    expect(scopeOf('core-tests')).toEqual(['scope:core']);
     expect(scopeOf('api-contracts')).toEqual(['scope:shared']);
   });
 });

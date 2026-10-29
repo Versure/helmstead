@@ -22,6 +22,7 @@
     }
   },
   "plugins": [
+    "@nx/dotnet",
     {
       "plugin": "@nx/eslint/plugin",
       "options": {
