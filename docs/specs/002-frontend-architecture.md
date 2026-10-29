@@ -1,7 +1,7 @@
 ---
 id: 002
 title: Frontend architecture and Angular guard rails
-status: approved         # draft | approved | built
+status: built            # draft | approved | built
 type: feature            # feature | fix | chore | spike
 plan-phase: 0            # docs/plan.md §8
 branch: feat/002-frontend-architecture
