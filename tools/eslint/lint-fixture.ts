@@ -1,5 +1,9 @@
+import { createProjectGraphAsync } from '@nx/devkit';
 import { ESLint } from 'eslint';
 import path from 'node:path';
+
+let graph: Promise<unknown> | undefined;
+const ensureProjectGraph = () => (graph ??= createProjectGraphAsync());
 
 export const repoRoot = path.resolve(import.meta.dirname, '../..');
 
@@ -16,6 +20,8 @@ export async function lintFixture(
   filePath: string,
   code: string,
 ): Promise<LintMessage[]> {
+  // The boundary rule skips itself, with only a warning, when no project graph is cached (a fresh clone, CI).
+  await ensureProjectGraph();
   // Like `nx lint`, use the config nearest to the file (apps/web and libs/ui add the Angular rules).
   const eslint = new ESLint({
     cwd: repoRoot,

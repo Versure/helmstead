@@ -4,6 +4,7 @@ using ArchUnitNET.Domain.Extensions;
 using ArchUnitNET.Fluent;
 using ArchUnitNET.Fluent.Conditions;
 using static ArchUnitNET.Fluent.ArchRuleDefinition;
+using Architecture = ArchUnitNET.Domain.Architecture;
 
 namespace Helmstead.Core.Tests.Boundaries;
 
@@ -51,6 +52,9 @@ public static class ArchitectureRules
     private static readonly Regex DomainOfSlice = new(Features + @"[^.]+\.Domain(\.|$)");
     private static readonly Regex CommandsOfSlice = new(Features + @"[^.]+\.Commands(\.|$)");
     private static readonly Regex QueriesOfSlice = new(Features + @"[^.]+\.Queries(\.|$)");
+    private static readonly Regex CommandContracts = new(@"^Helmstead\.Core\.Api\.Shared\.Cqrs\.ICommand");
+    private static readonly Regex QueryContracts = new(@"^Helmstead\.Core\.Api\.Shared\.Cqrs\.IQuery");
+    private static readonly Regex SliceLayout = new(Features + @"[^.]+(\.(Commands|Queries|Domain)(\..+)?)?$");
     private static readonly Regex SharedKernel = new(@"^Helmstead\.Core\.Api\.Shared(\.|$)");
 
     private static readonly Regex AspNetCore = new(@"^Microsoft\.AspNetCore\.");
@@ -98,6 +102,15 @@ public static class ArchitectureRules
             "A command does not read through a query; its handler works on the domain (ADR-003).",
             InNamespace(CommandsOfSlice),
             TargetMatches(QueriesOfSlice)),
+        // The contracts live in Shared, which every slice may use, so reaching through them must be closed as well.
+        new("Queries reference no command contracts",
+            "A query cannot execute a command through the shared contracts (ADR-003).",
+            InNamespace(QueriesOfSlice),
+            TargetMatches(CommandContracts)),
+        new("Commands reference no query contracts",
+            "A command cannot execute a query through the shared contracts (ADR-003).",
+            InNamespace(CommandsOfSlice),
+            TargetMatches(QueryContracts)),
         new("Queries never write",
             "A query handler does not call SaveChanges, ExecuteUpdate or ExecuteDelete (ADR-003).",
             InNamespace(QueriesOfSlice),
@@ -139,6 +152,16 @@ public static class ArchitectureRules
     /// instead of silently escaping every rule.
     /// </summary>
     public static IReadOnlyList<Regex> CoveredAssemblyPatterns { get; } = [Api, Connectors, Agents, Providers];
+
+    /// <summary>
+    /// Types under <c>Features</c> that sit outside <c>Features/&lt;Slice&gt;[/Commands|/Queries|/Domain]</c>. The CQRS and
+    /// domain rules match those folders, so a type in any other folder would silently escape them.
+    /// </summary>
+    public static IReadOnlyList<string> TypesOutsideTheSliceLayout(Architecture architecture) =>
+        [.. architecture.Types
+            .Where(type => type.Namespace.FullName.StartsWith("Helmstead.Core.Api.Features", StringComparison.Ordinal))
+            .Where(type => !SliceLayout.IsMatch(type.Namespace.FullName))
+            .Select(type => type.FullName)];
 
     private static Func<IType, bool> InAssembly(Regex pattern) => type => pattern.IsMatch(type.Assembly.Name);
 

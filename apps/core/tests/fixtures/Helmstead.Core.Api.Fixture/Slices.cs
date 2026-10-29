@@ -62,3 +62,64 @@ namespace Helmstead.Core.Api.Shared
         public Invoice? Invoice { get; set; }
     }
 }
+
+namespace Helmstead.Core.Api.Features.Orders.Queries
+{
+    using Helmstead.Core.Api.Shared.Cqrs;
+
+    public sealed record PlaceOrderCommand : ICommand<int>;
+
+    public sealed record ReadOrderQuery : IQuery<int>;
+
+    /// <summary>Test fixture: a query wrongly takes a command handler from the shared contracts.</summary>
+    public sealed class SneakyQueryHandler(ICommandHandler<PlaceOrderCommand, int> writer)
+    {
+        public ICommandHandler<PlaceOrderCommand, int> Writer { get; } = writer;
+    }
+
+    /// <summary>Test fixture: an async query handler that writes (the call sits in a compiler-generated state machine).</summary>
+    public sealed class AsyncWriter
+    {
+        public async Task<int> Run(FixtureDbContext database)
+        {
+            await Task.Yield();
+            return await database.SaveChangesAsync();
+        }
+    }
+
+    /// <summary>Test fixture: a query handler that writes from a lambda (a compiler-generated closure).</summary>
+    public sealed class LambdaWriter
+    {
+        public Func<Task<int>> Run(FixtureDbContext database) => () => database.SaveChangesAsync();
+    }
+}
+
+namespace Helmstead.Core.Api.Features.Orders.Commands
+{
+    using Helmstead.Core.Api.Shared.Cqrs;
+
+    /// <summary>Test fixture: a command wrongly takes a query handler from the shared contracts.</summary>
+    public sealed class SneakyCommandHandler(IQueryHandler<ReadOrderQuery, int> reader)
+    {
+        public IQueryHandler<ReadOrderQuery, int> Reader { get; } = reader;
+    }
+}
+
+namespace Helmstead.Core.Api.Features.Orders.Handlers
+{
+    /// <summary>Test fixture: a folder outside the layout (Commands, Queries, Domain), which would escape the CQRS rules.</summary>
+    public sealed class MisplacedHandler;
+}
+
+namespace Helmstead.Core.Api.Features.Clean.Queries
+{
+    using Helmstead.Core.Api.Shared.Cqrs;
+
+    public sealed record ReadCleanQuery : IQuery<int>;
+
+    /// <summary>Test fixture: a compliant slice. No rule may report it (a positive control).</summary>
+    public sealed class ReadCleanHandler : IQueryHandler<ReadCleanQuery, int>
+    {
+        public Task<int> Handle(ReadCleanQuery query, CancellationToken cancellationToken) => Task.FromResult(1);
+    }
+}

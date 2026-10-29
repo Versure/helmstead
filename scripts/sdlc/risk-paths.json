@@ -22,6 +22,8 @@
       "paths": [
         "libs/api-contracts/**",
         "apps/core/src/Helmstead.Core.Domain/**",
+        "apps/core/src/Helmstead.Core.Api/Shared/**",
+        "apps/core/src/Helmstead.Core.Api/Features/*/Domain/**",
         "{apps,libs}/**/*{acp,ipc,sidecar}*{,/**}",
         "{apps,libs}/*/project.json",
         "{apps,libs}/**/project.json",

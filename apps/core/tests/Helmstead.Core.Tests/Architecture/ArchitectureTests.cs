@@ -7,8 +7,10 @@ public sealed class ArchitectureTests
 {
     private static readonly Lazy<Architecture> Real = new(() => Load(AssemblyDiscovery.RealAssemblyNames(AssemblyDiscovery.NamesInOutputFolder())));
 
+    // The Api fixture uses the real CQRS contracts, so that assembly is loaded next to the fixtures for those types
+    // to resolve to named types. Nothing else of the real code is evaluated against the fixtures.
     private static readonly Lazy<Architecture> Fixtures = new(() =>
-        Load(AssemblyDiscovery.FixtureAssemblyNames(AssemblyDiscovery.NamesInOutputFolder())));
+        Load([.. AssemblyDiscovery.FixtureAssemblyNames(AssemblyDiscovery.NamesInOutputFolder()), "Helmstead.Core.Api"]));
 
     // Each rule, with the dependency the fixtures contain for it. A rule that stops looking for that
     // dependency (a clause deleted from a predicate) fails here even though another clause still fires.
@@ -22,6 +24,8 @@ public sealed class ArchitectureTests
         ["The shared kernel references no slice"] = "Helmstead.Core.Api.Features.Billing.Invoice",
         ["Queries reference no commands"] = "Helmstead.Core.Api.Features.Orders.Commands.PlaceOrder",
         ["Commands reference no queries"] = "Helmstead.Core.Api.Features.Orders.Queries.ListOrders",
+        ["Queries reference no command contracts"] = "Helmstead.Core.Api.Shared.Cqrs.ICommandHandler",
+        ["Commands reference no query contracts"] = "Helmstead.Core.Api.Shared.Cqrs.IQueryHandler",
         ["Queries never write"] = "SaveChangesAsync",
         ["A connector references no other connector"] = "Helmstead.Connectors.FixtureB.FixtureBType",
         ["A connector references no Agents"] = "Helmstead.Agents.Fixture.AgentFixtureType",
@@ -51,6 +55,8 @@ public sealed class ArchitectureTests
                 "The shared kernel references no slice",
                 "Queries reference no commands",
                 "Commands reference no queries",
+                "Queries reference no command contracts",
+                "Commands reference no query contracts",
                 "Queries never write",
                 "A connector references no other connector",
                 "A connector references no Agents",
@@ -108,5 +114,38 @@ public sealed class ArchitectureTests
 
         Assert.NotEmpty(failures);
         Assert.Contains(failures, failure => failure.Description.Contains(ExpectedViolation[name], StringComparison.Ordinal));
+    }
+
+    [Theory]
+    [InlineData("AsyncWriter")]
+    [InlineData("LambdaWriter")]
+    public void Queries_never_write_also_catches_async_and_lambda_code(string writer)
+    {
+        // The write sits in a compiler-generated nested type (state machine or closure), not in the handler's own members.
+        var failures = Rule("Queries never write").ToArchRule().Evaluate(Fixtures.Value).Where(result => !result.Passed).ToArray();
+
+        Assert.Contains(failures, failure => failure.Description.Contains(writer, StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void Slices_use_only_the_Commands_Queries_and_Domain_folders()
+    {
+        Assert.Empty(ArchitectureRules.TypesOutsideTheSliceLayout(Real.Value));
+
+        var misplaced = ArchitectureRules.TypesOutsideTheSliceLayout(Fixtures.Value);
+
+        Assert.Contains("Helmstead.Core.Api.Features.Orders.Handlers.MisplacedHandler", misplaced);
+    }
+
+    [Fact]
+    public void A_compliant_slice_is_reported_by_no_rule()
+    {
+        // A positive control: a rule that over-matches would flag the clean slice too.
+        foreach (var rule in ArchitectureRules.All)
+        {
+            var failures = rule.ToArchRule().Evaluate(Fixtures.Value).Where(result => !result.Passed);
+
+            Assert.DoesNotContain(failures, failure => failure.Description.Contains("Features.Clean", StringComparison.Ordinal));
+        }
     }
 }

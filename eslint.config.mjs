@@ -69,6 +69,7 @@ export default [
       '@eslint-community/eslint-comments/no-restricted-disable': [
         'error',
         '@nx/enforce-module-boundaries',
+        '@angular-eslint/*',
         '@eslint-community/eslint-comments/*',
       ],
     },

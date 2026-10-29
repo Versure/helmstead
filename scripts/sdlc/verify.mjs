@@ -54,10 +54,10 @@ const binOf = (pkg, name = pkg) => {
 const nx = binOf('nx');
 
 const steps = [
+  // First, because the @nx/dotnet project graph and its targets (built with --no-restore) need restored packages.
+  { name: 'restore NuGet packages', command: 'dotnet', args: ['restore', 'apps/core/Helmstead.Core.slnx', '--nologo'] },
   { name: 'guard rails (scope tags, lint boundaries)', bin: binOf('vitest'), args: ['run', '--config', 'tools/vitest.config.mts'] },
   { name: 'format check', bin: nx, args: ['format:check'] },
-  // The @nx/dotnet targets build with --no-restore, so the NuGet packages are restored once, here.
-  { name: 'restore NuGet packages', command: 'dotnet', args: ['restore', 'apps/core/Helmstead.Core.slnx', '--nologo'] },
   runAll
     ? { name: 'lint, test, build and contract check of all projects', bin: nx, args: ['run-many', '-t', ...targets] }
     : { name: `lint, test, build and contract check of affected projects (base ${base})`, bin: nx, args: ['affected', '-t', ...targets, `--base=${base}`] },

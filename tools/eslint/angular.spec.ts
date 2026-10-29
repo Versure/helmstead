@@ -88,6 +88,20 @@ export class FixtureService {
     expect(errorsOf(messages, rule).length).toBeGreaterThan(0);
   });
 
+  it('does not allow switching an Angular rule off with a comment', async () => {
+    const messages = await lintFixture(
+      'apps/web/src/app/fixture.ts',
+      '// eslint-disable-next-line @angular-eslint/prefer-inject\nexport const a = 1;\n',
+    );
+
+    expect(
+      errorsOf(
+        messages,
+        '@eslint-community/eslint-comments/no-restricted-disable',
+      ),
+    ).toHaveLength(1);
+  });
+
   it('accepts a component that follows the practices', async () => {
     const messages = await lintFixture(
       'apps/web/src/app/fixture.ts',
