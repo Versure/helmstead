@@ -1,0 +1,10 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/Helmstead.Core.Api/Helmstead.Core.Api.csproj" />
+    <Project Path="src/Helmstead.Core.Domain/Helmstead.Core.Domain.csproj" />
+    <Project Path="src/Helmstead.Core.Persistence/Helmstead.Core.Persistence.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/Helmstead.Core.Tests/Helmstead.Core.Tests.csproj" />
+  </Folder>
+</Solution>
