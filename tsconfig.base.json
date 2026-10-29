@@ -10,11 +10,24 @@
     "importHelpers": true,
     "target": "es2015",
     "module": "esnext",
-    "lib": ["es2020", "dom"],
+    "lib": [
+      "es2020",
+      "dom"
+    ],
     "skipLibCheck": true,
     "skipDefaultLibCheck": true,
     "strict": false,
-    "paths": {}
+    "paths": {
+      "@helmstead/ui": [
+        "./libs/ui/src/index.ts"
+      ],
+      "@helmstead/api-contracts": [
+        "./libs/api-contracts/src/index.ts"
+      ]
+    }
   },
-  "exclude": ["node_modules", "tmp"]
+  "exclude": [
+    "node_modules",
+    "tmp"
+  ]
 }

@@ -15,3 +15,5 @@ obj/
 TestResults/
 
 __screenshots__/
+vitest.config.*.timestamp*
+.vitest
