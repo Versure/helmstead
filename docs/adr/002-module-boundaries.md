@@ -74,6 +74,16 @@ The ESLint config, project tags, formatting config, the architecture tests and t
   one, and closes this gap.
 - `AllowedHosts` is limited to `127.0.0.1` and `localhost`, which blocks requests that arrive under another host name
   (DNS rebinding). It is not authentication.
+- `libs/api-contracts` declares `core` as an implicit dependency. That is the one intended exception to "shared
+  depends on shared only": it records that the contract is produced by the core, so a core change re-runs the
+  contract check. `@nx/enforce-module-boundaries` only checks imports, so it does not see this edge.
+- A `dotnet build` of `Helmstead.Core.Api` writes `libs/api-contracts/openapi.json` (build-time OpenAPI generation).
+  Nx cannot see that write, so `core:build` is never cached. Once the core's startup does real work (a database,
+  an app data folder), startup must be skipped when the OpenAPI generator starts the app, or generation must move
+  to the Nx target only.
+- Every project under `apps/core/src` must match one of the assembly name patterns of the rules, or a test fails.
+  Connectors may not share a `Helmstead.Connectors.*` assembly, because a connector may not reference another one;
+  shared connector contracts belong in `Helmstead.Core.Domain`, or a new ADR must change the rule.
 - The relative-path edge cases (web or ui importing the core by a relative path) are rejected by Nx for any
   project-to-project relative import, whatever the tags. Tag-based rejection for those pairs is only visible when the
   core has TypeScript with an import alias, which it does not have.

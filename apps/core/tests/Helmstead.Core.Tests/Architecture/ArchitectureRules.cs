@@ -74,21 +74,38 @@ public static class ArchitectureRules
             "Web concerns live in Helmstead.Core.Api only.",
             NotApi,
             (_, target) => AspNetCore.IsMatch(target.FullName)),
-        new("A connector references no other connector, Agents or Providers",
+        // One rule per forbidden edge, so that dropping one of them fails a named test.
+        new("A connector references no other connector",
             "No connector-specific code outside its adapter (plan §10 rule 5).",
             Connectors,
-            (type, target) => InOtherAssembly(type, target, Connectors)
-                              || InOtherAssembly(type, target, Agents)
-                              || InOtherAssembly(type, target, Providers)),
+            (type, target) => InOtherAssembly(type, target, Connectors)),
+        new("A connector references no Agents",
+            "No connector-specific code outside its adapter (plan §10 rule 5).",
+            Connectors,
+            (type, target) => InOtherAssembly(type, target, Agents)),
+        new("A connector references no Providers",
+            "No connector-specific code outside its adapter (plan §10 rule 5).",
+            Connectors,
+            (type, target) => InOtherAssembly(type, target, Providers)),
         new("Agents references no connector",
             "Harness and connector stay separate (plan §2 principle 1).",
             Agents,
             (type, target) => InOtherAssembly(type, target, Connectors)),
-        new("Providers references no connector and no Agents",
-            "Model providers know neither connectors nor harnesses.",
+        new("Providers references no connector",
+            "Model providers know no connectors.",
             Providers,
-            (type, target) => InOtherAssembly(type, target, Connectors) || InOtherAssembly(type, target, Agents)),
+            (type, target) => InOtherAssembly(type, target, Connectors)),
+        new("Providers references no Agents",
+            "Model providers know no harnesses (plan §2 principle 1).",
+            Providers,
+            (type, target) => InOtherAssembly(type, target, Agents)),
     ];
+
+    /// <summary>
+    /// Every assembly under src/ must match one of these, so a project named outside the scheme fails a test
+    /// instead of silently escaping every rule.
+    /// </summary>
+    public static IReadOnlyList<Regex> CoveredAssemblyPatterns { get; } = [Domain, Persistence, Api, Connectors, Agents, Providers];
 
     private static bool InOtherAssembly(IType from, IType to, Regex assemblyPattern) =>
         to.Assembly.FullName != from.Assembly.FullName && assemblyPattern.IsMatch(to.Assembly.Name);

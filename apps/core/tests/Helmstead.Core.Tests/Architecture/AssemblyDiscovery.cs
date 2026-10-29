@@ -19,6 +19,21 @@ public static class AssemblyDiscovery
     public static IReadOnlyList<string> NamesInOutputFolder() =>
         [.. Directory.EnumerateFiles(AppContext.BaseDirectory, "Helmstead.*.dll").Select(Path.GetFileNameWithoutExtension).OfType<string>()];
 
+    /// <summary>The project folders under <c>apps/core/src</c>, found from the solution file upwards from the test output.</summary>
+    public static IReadOnlyList<string> SourceProjectNames()
+    {
+        for (var directory = new DirectoryInfo(AppContext.BaseDirectory); directory is not null; directory = directory.Parent)
+        {
+            if (File.Exists(Path.Combine(directory.FullName, "Helmstead.Core.slnx")))
+            {
+                return [.. Directory.EnumerateFiles(Path.Combine(directory.FullName, "src"), "*.csproj", SearchOption.AllDirectories)
+                    .Select(Path.GetFileNameWithoutExtension).OfType<string>()];
+            }
+        }
+
+        throw new InvalidOperationException("Helmstead.Core.slnx was not found above the test output folder.");
+    }
+
     public static IReadOnlyList<Assembly> Load(IEnumerable<string> names) =>
         [.. names.Select(name => Assembly.Load(new AssemblyName(name)))];
 

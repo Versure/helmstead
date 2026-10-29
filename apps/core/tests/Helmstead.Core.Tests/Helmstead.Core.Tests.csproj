@@ -20,7 +20,7 @@
   <ItemGroup>
     <!-- Every project under src/ is referenced by glob, so the architecture tests cover a project added later
          without editing this file. Their assemblies land in the test output folder and are found by name. -->
-    <ProjectReference Include="..\..\src\*\*.csproj" />
+    <ProjectReference Include="..\..\src\**\*.csproj" />
   </ItemGroup>
 
   <ItemGroup>

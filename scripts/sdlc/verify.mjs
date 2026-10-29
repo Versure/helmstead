@@ -28,10 +28,15 @@ if (hook) {
     ...git('diff', '--name-only', `${base}...HEAD`).split('\n'),
     ...git('status', '--porcelain').split('\n').map((l) => l.slice(3)),
   ].filter(Boolean);
-  if (!changed.some((f) => /^(apps|libs|tools)\//.test(f))) process.exit(0);
+  if (!changed.some((f) => /^(apps|libs|tools)\/|^(eslint\.config\.[cm]?js|nx\.json|tsconfig\.base\.json|package\.json)$/.test(f))) process.exit(0);
 }
 
 if (!existsSync('nx.json')) {
+  // Deleting nx.json must never read as "nothing to verify" in CI.
+  if (process.env.CI) {
+    console.error('nx.json is missing, so no check can run. Failing instead of passing.');
+    process.exit(1);
+  }
   console.log('No Nx workspace yet (Phase 0 has not started), so there is nothing to verify.');
   process.exit(0);
 }

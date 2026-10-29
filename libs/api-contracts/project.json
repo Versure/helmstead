@@ -24,7 +24,11 @@
       "cache": false,
       "dependsOn": ["generate"],
       "options": {
-        "command": "git diff --exit-code -- libs/api-contracts"
+        "commands": [
+          "git add --intent-to-add -- libs/api-contracts/openapi.json libs/api-contracts/src/generated",
+          "git diff --exit-code HEAD -- libs/api-contracts/openapi.json libs/api-contracts/src/generated"
+        ],
+        "parallel": false
       }
     }
   }
