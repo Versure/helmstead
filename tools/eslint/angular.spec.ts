@@ -282,3 +282,19 @@ describe('template accessibility', () => {
     expect(errorsOf(messages, rule).length).toBeGreaterThan(0);
   });
 });
+
+describe('switching template rules off', () => {
+  it('fails lint for a disable comment in a template', async () => {
+    const messages = await lintFixture(
+      'libs/web/system/ui/src/lib/fixture.html',
+      '<!-- eslint-disable-next-line @angular-eslint/template/no-inline-styles -->\n<p style="color: red">x</p>\n',
+    );
+
+    expect(
+      errorsOf(
+        messages,
+        '@eslint-community/eslint-comments/no-restricted-disable',
+      ),
+    ).toHaveLength(1);
+  });
+});

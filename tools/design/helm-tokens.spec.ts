@@ -61,3 +61,29 @@ describe('porting a new version of the tokens', () => {
     expect(() => tokensToCss(tampered)).toThrow(/not a plain token value/);
   });
 });
+
+describe('porting refuses tampered names and metadata', () => {
+  it.each([
+    [
+      'a token name',
+      (t: typeof json) => (t.color.tokens[0].name = 'ground: red; } x {'),
+    ],
+    [
+      'a theme id',
+      (t: typeof json) => (t.color.themes[1].id = "light'] , body { x"),
+    ],
+    [
+      'the system name',
+      (t: typeof json) => (t.name = 'Helm */ body { display: none } /*'),
+    ],
+    [
+      'a CSS escape in a value',
+      (t: typeof json) => (t.color.tokens[0].value.dark = 'u\\72l(x)'),
+    ],
+  ])('%s', (_what, tamper) => {
+    const tampered = structuredClone(json);
+    tamper(tampered);
+
+    expect(() => tokensToCss(tampered)).toThrow(/not a plain token/);
+  });
+});

@@ -19,8 +19,36 @@ export const TOKENS_CSS = path.join(
 const kebab = (name) =>
   name.replace(/([a-z0-9])([A-Z])/g, '$1-$2').toLowerCase();
 // The JSON comes from outside the repo and the CSS it becomes is exempt from Stylelint, so only plain values pass:
-// no url(), at-rules, blocks, declarations or comments.
-const UNSAFE = /url\(|@|[{};]|\/\*|\*\/|<|>/i;
+// no url(), at-rules, blocks, declarations, comments or CSS escapes; names and theme ids are plain identifiers.
+const UNSAFE = /url\(|@|[{};\\]|\/\*|\*\/|<|>/i;
+const IDENTIFIER = /^[A-Za-z0-9-]+$/;
+
+/** Throws on anything in the JSON that is not a plain name, id or value, before it is written into CSS. */
+function validate(tokens) {
+  const fail = (what, value) => {
+    throw new Error(
+      `${what} ${JSON.stringify(value)} is not a plain token name, id or value.`,
+    );
+  };
+  for (const text of [tokens.name, String(tokens.version)]) {
+    if (typeof text !== 'string' || UNSAFE.test(text)) fail('Metadata', text);
+  }
+  for (const theme of tokens.color.themes) {
+    if (!IDENTIFIER.test(theme.id)) fail('Theme id', theme.id);
+    if (UNSAFE.test(theme.name)) fail('Theme name', theme.name);
+  }
+  const named = [
+    ...tokens.color.tokens,
+    ...(tokens.shadow?.tokens ?? []),
+    ...(tokens.spacing?.tokens ?? []),
+    ...(tokens.radius?.tokens ?? []),
+    ...tokens.type.groups.flatMap((group) => group.styles),
+    ...Object.keys(tokens.type.families).map((name) => ({ name })),
+  ];
+  for (const { name } of named) {
+    if (!IDENTIFIER.test(name)) fail('Token name', name);
+  }
+}
 const checked = (name, value) => {
   if (typeof value !== 'string' || UNSAFE.test(value)) {
     throw new Error(
@@ -35,6 +63,7 @@ const valueIn = (value, theme) =>
 
 /** The CSS for a parsed tokens.json: the first theme on :root (the default), every other theme under [data-theme]. */
 export function tokensToCss(tokens) {
+  validate(tokens);
   const [defaultTheme, ...otherThemes] = tokens.color.themes;
   const themed = [...tokens.color.tokens, ...(tokens.shadow?.tokens ?? [])];
   const fixed = [];

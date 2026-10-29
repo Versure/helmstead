@@ -120,8 +120,10 @@ export default [
     },
   },
   {
-    // A boundary rule that can be switched off with a comment is not a rule.
+    // A boundary rule that can be switched off with a comment is not a rule. Templates too: a template rule
+    // switched off would let a raw inline style past Stylelint.
     files: [
+      '**/*.html',
       '**/*.ts',
       '**/*.tsx',
       '**/*.cts',

@@ -28,7 +28,7 @@ if (hook) {
     ...git('diff', '--name-only', `${base}...HEAD`).split('\n'),
     ...git('status', '--porcelain').split('\n').map((l) => l.slice(3)),
   ].filter(Boolean);
-  if (!changed.some((f) => /^(apps|libs|tools)\/|^(eslint\.config\.[cm]?js|stylelint\.config\.[cm]?js|sheriff\.config\.ts|nx\.json|tsconfig\.base\.json|package(-lock)?\.json)$/.test(f))) process.exit(0);
+  if (!changed.some((f) => /^(apps|libs|tools)\/|^(eslint\.config\.[cm]?js|stylelint\.config\.[cm]?js|\.stylelintignore|sheriff\.config\.ts|nx\.json|tsconfig\.base\.json|package(-lock)?\.json)$/.test(f))) process.exit(0);
 }
 
 if (!existsSync('nx.json')) {
