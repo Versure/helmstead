@@ -1,0 +1,9 @@
+{
+  "name": "@helmstead/system-api",
+  "version": "0.0.1",
+  "peerDependencies": {
+    "@helmstead/system-ui": "0.0.1"
+  },
+  "sideEffects": false,
+  "private": true
+}

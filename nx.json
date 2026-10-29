@@ -42,15 +42,19 @@
     "@nx/angular:application": {
       "e2eTestRunner": "none",
       "linter": "eslint",
-      "style": "scss",
+      "style": "css",
       "unitTestRunner": "vitest-angular"
     },
     "@nx/angular:library": {
       "linter": "eslint",
-      "unitTestRunner": "vitest-angular"
+      "unitTestRunner": "vitest-angular",
+      "style": "css",
+      "buildable": true,
+      "skipModule": true,
+      "prefix": "hs"
     },
     "@nx/angular:component": {
-      "style": "scss"
+      "style": "css"
     }
   }
 }

@@ -16,7 +16,29 @@
     "strict": false,
     "paths": {
       "@helmstead/ui": ["./libs/ui/src/index.ts"],
-      "@helmstead/api-contracts": ["./libs/api-contracts/src/index.ts"]
+      "@helmstead/api-contracts": ["./libs/api-contracts/src/index.ts"],
+      "@helmstead/system-model": ["./libs/web/system/model/src/index.ts"],
+      "@helmstead/system-data-access": [
+        "./libs/web/system/data-access/src/index.ts"
+      ],
+      "@helmstead/system-ui": ["./libs/web/system/ui/src/index.ts"],
+      "@helmstead/system-feature": ["./libs/web/system/feature/src/index.ts"],
+      "@helmstead/system-api": ["./libs/web/system/api/src/index.ts"],
+      "@helmstead/lint-fixture-system-util": [
+        "./tools/eslint/fixtures/projects/system-util/src/index.ts"
+      ],
+      "@helmstead/lint-fixture-system-feature": [
+        "./tools/eslint/fixtures/projects/system-feature/src/index.ts"
+      ],
+      "@helmstead/lint-fixture-shared-util": [
+        "./tools/eslint/fixtures/projects/shared-util/src/index.ts"
+      ],
+      "@helmstead/lint-fixture-other-api": [
+        "./tools/eslint/fixtures/projects/other-api/src/index.ts"
+      ],
+      "@helmstead/lint-fixture-other-ui": [
+        "./tools/eslint/fixtures/projects/other-ui/src/index.ts"
+      ]
     }
   },
   "exclude": ["node_modules", "tmp"]

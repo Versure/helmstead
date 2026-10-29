@@ -1,7 +1,10 @@
 import nx from '@nx/eslint-plugin';
 import eslintComments from '@eslint-community/eslint-plugin-eslint-comments';
+import { FRONTEND_DOMAINS } from './tools/workspace/frontend-tags.mjs';
 
-// The allowed edges between projects are defined in docs/adr/002-module-boundaries.md.
+// The allowed edges between projects are defined in docs/adr/002-module-boundaries.md (scopes) and
+// docs/adr/004-frontend-architecture.md (domains and layers). A project must satisfy every constraint whose
+// sourceTag it carries, so a frontend lib passes only an edge that its scope, its type and its domain all allow.
 // Changing this file changes those rules, so the risk gate treats it as high risk.
 export default [
   ...nx.configs['flat/base'],
@@ -26,7 +29,9 @@ export default [
         'error',
         {
           enforceBuildableLibDependency: true,
-          allow: ['^.*/eslint(\\.base|\\.angular)?\\.config\\.[cm]?[jt]s$'],
+          allow: [
+            '^.*/eslint(\\.base|\\.angular|\\.web)?\\.config\\.[cm]?[jt]s$',
+          ],
           depConstraints: [
             {
               sourceTag: 'scope:web',
@@ -39,6 +44,75 @@ export default [
             {
               sourceTag: 'scope:shared',
               onlyDependOnLibsWithTags: ['scope:shared'],
+            },
+            // Frontend layers. An app may use data-access only for app-wide providers: the import is allowed here
+            // and limited to app.config.ts by no-restricted-imports below.
+            {
+              sourceTag: 'type:app',
+              onlyDependOnLibsWithTags: [
+                'type:feature',
+                'type:ui',
+                'type:util',
+                'type:model',
+                'type:api',
+                'type:data-access',
+              ],
+            },
+            {
+              // type:api is here only so a feature can use another domain's api lib; its own domain's api lib
+              // re-exports this feature, so importing it is a cycle that Nx rejects anyway.
+              sourceTag: 'type:feature',
+              onlyDependOnLibsWithTags: [
+                'type:ui',
+                'type:data-access',
+                'type:model',
+                'type:util',
+                'type:api',
+              ],
+            },
+            {
+              sourceTag: 'type:data-access',
+              onlyDependOnLibsWithTags: [
+                'type:model',
+                'type:util',
+                'type:contracts',
+              ],
+            },
+            {
+              sourceTag: 'type:ui',
+              onlyDependOnLibsWithTags: ['type:model', 'type:util'],
+            },
+            {
+              sourceTag: 'type:model',
+              onlyDependOnLibsWithTags: ['type:util'],
+            },
+            {
+              sourceTag: 'type:util',
+              onlyDependOnLibsWithTags: ['type:util'],
+            },
+            {
+              // Only re-exports (see the no-restricted-syntax rule for api index files); the domain constraint
+              // below keeps these edges inside the api lib's own domain.
+              sourceTag: 'type:api',
+              onlyDependOnLibsWithTags: [
+                'type:feature',
+                'type:ui',
+                'type:data-access',
+                'type:model',
+              ],
+            },
+            // Frontend domains: a domain uses itself, shared, and other domains only through their type:api lib.
+            ...FRONTEND_DOMAINS.map((domain) => ({
+              sourceTag: `domain:${domain}`,
+              onlyDependOnLibsWithTags: [
+                `domain:${domain}`,
+                'domain:shared',
+                'type:api',
+              ],
+            })),
+            {
+              sourceTag: 'domain:shared',
+              onlyDependOnLibsWithTags: ['domain:shared'],
             },
           ],
         },

@@ -1,0 +1,10 @@
+{
+  "name": "lint-fixture-other-api",
+  "$schema": "../../../../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "tools/eslint/fixtures/projects/other-api/src",
+  "projectType": "library",
+  "tags": ["scope:web", "domain:other", "type:api"],
+  "targets": {
+    "build": { "executor": "nx:noop" }
+  }
+}
