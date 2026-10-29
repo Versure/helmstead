@@ -7,6 +7,11 @@
   "engines": {
     "node": ">=22"
   },
+  "overrides": {
+    "openapi-typescript": {
+      "typescript": "$typescript"
+    }
+  },
   "devDependencies": {
     "@angular-devkit/core": "~22.2.0",
     "@angular-devkit/schematics": "~22.2.0",
@@ -35,7 +40,9 @@
     "jsonc-eslint-parser": "^2.1.0",
     "ng-packagr": "~22.2.0",
     "nx": "^24.0.2",
+    "openapi-typescript": "^7.13.0",
     "postcss": "^8.4.5",
+    "prettier": "^3.9.10",
     "tslib": "^2.3.0",
     "typescript": "~6.0.3",
     "typescript-eslint": "^8.58.0",

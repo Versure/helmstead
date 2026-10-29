@@ -4,15 +4,11 @@
   "sourceRoot": "libs/ui/src",
   "prefix": "hs",
   "projectType": "library",
-  "tags": [
-    "scope:web"
-  ],
+  "tags": ["scope:web"],
   "targets": {
     "build": {
       "executor": "@nx/angular:ng-packagr-lite",
-      "outputs": [
-        "{workspaceRoot}/dist/{projectRoot}"
-      ],
+      "outputs": ["{workspaceRoot}/dist/{projectRoot}"],
       "defaultConfiguration": "production",
       "options": {
         "project": "libs/ui/ng-package.json",

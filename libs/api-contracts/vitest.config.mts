@@ -16,6 +16,6 @@ export default defineConfig(() => ({
     coverage: {
       reportsDirectory: '../../coverage/libs/api-contracts',
       provider: 'v8' as const,
-    }
+    },
   },
 }));

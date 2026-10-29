@@ -4,37 +4,21 @@
   "targetDefaults": {
     "@angular/build:application": {
       "cache": true,
-      "dependsOn": [
-        "^build"
-      ],
-      "inputs": [
-        "default",
-        "^default"
-      ]
+      "dependsOn": ["^build"],
+      "inputs": ["default", "^default"]
     },
     "@angular/build:unit-test": {
       "cache": true,
-      "inputs": [
-        "default",
-        "^default"
-      ]
+      "inputs": ["default", "^default"]
     },
     "@nx/angular:ng-packagr-lite": {
       "cache": true,
-      "dependsOn": [
-        "^build"
-      ],
-      "inputs": [
-        "default",
-        "^default"
-      ]
+      "dependsOn": ["^build"],
+      "inputs": ["default", "^default"]
     },
     "@nx/angular:unit-test": {
       "cache": true,
-      "inputs": [
-        "default",
-        "^default"
-      ]
+      "inputs": ["default", "^default"]
     }
   },
   "plugins": [
