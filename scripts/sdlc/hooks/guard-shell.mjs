@@ -26,13 +26,19 @@ for (const [pattern, reason] of rules) {
   if (pattern.test(cmd)) block(reason);
 }
 
-// Reading branch protection is fine; changing it is not. `gh api` sends a write when the
-// method says so or when fields/input are given (it then defaults to POST).
-const protectionRest = /\bgh\s+api\b[^\n]*\/(protection|rulesets)\b/;
-const restWrite = /\s(-X\s*|--method[\s=]+)(PUT|POST|PATCH|DELETE)\b|\s(-f|-F|--field|--raw-field|--input)(\s|=|$)/i;
-const protectionGraphql = /\bgh\s+api\s+graphql\b[^\n]*\bmutation\b[^\n]*(BranchProtection|Ruleset)/i;
-if ((protectionRest.test(cmd) && restWrite.test(cmd)) || protectionGraphql.test(cmd)) {
-  block('Branch protection is the owner\'s to change.');
+// Reading branch protection is fine; changing it is not. A `gh api` call that touches
+// protection is allowed only when it is plainly a read: no method other than GET, and no
+// fields or input (those make `gh api` default to POST). Spellings the checks don't
+// recognise therefore fail closed.
+if (/\bgh(\.exe)?\s+api\b/.test(cmd)) {
+  const methods = [...cmd.matchAll(/\s(?:-X|--method)[\s=]*["']?([A-Za-z]+)/g)].map((m) => m[1].toUpperCase());
+  const writes = methods.some((m) => m !== 'GET') || /\s(?:-[fF]|--field\b|--raw-field\b|--input\b)/.test(cmd);
+  const restProtection = /\/(protection|rulesets)\b/.test(cmd) && writes;
+  const graphqlProtection = /\bgraphql\b/.test(cmd) &&
+    ((/\bmutation\b/.test(cmd) && /(BranchProtection|Ruleset)/i.test(cmd)) || /query=@/.test(cmd));
+  if (restProtection || graphqlProtection) {
+    block('Branch protection is the owner\'s to change. (GraphQL queries from a file are blocked too; inline the query.)');
+  }
 }
 
 if (/\bgit\s+(commit|push)\b/.test(cmd)) {
