@@ -60,8 +60,8 @@ fails on it. This proves the rules can fail. The fixtures are not part of any re
 ### Rules still to come
 
 - Bounded-context rules inside the .NET core are added by the specs that create those modules.
-- Frontend domain-driven layout (`domain:` and `type:` tags, Sheriff inside projects, HTTP only in data-access) follows
-  in spec 002.
+- Frontend domain-driven layout (`domain:` and `type:` tags, Sheriff inside projects, HTTP only in data-access) is in
+  [ADR 004](004-frontend-architecture.md).
 
 ### The rules guard themselves
 
