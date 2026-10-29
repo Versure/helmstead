@@ -34,12 +34,13 @@ export interface FrontendProject extends ProjectTags {
   root: string;
 }
 
-const isFrontendLib = (root: string) =>
-  root === 'libs/ui' || root.startsWith('libs/web/');
+const isFrontendLibRoot = (root: string) =>
+  root === 'libs/ui' || /^libs\/web\/[^/]+\/[^/]+$/.test(root);
 
 /**
- * Every frontend lib (`libs/web/**`, `libs/ui`) carries exactly one `domain:` and one `type:` tag, and its domain has a
- * boundary rule; `apps/web` carries `type:app` and no domain (ADR-004).
+ * Every frontend project (`scope:web`) other than `apps/web` is a lib in `libs/web/<domain>/<type>` or `libs/ui`, and
+ * carries exactly one `domain:` and one `type:` tag that match its folder; its domain has a boundary rule. `apps/web`
+ * carries `type:app` and no domain (ADR-004). A scope:web project anywhere else would escape the layer rules.
  */
 export function checkFrontendTags(projects: FrontendProject[]): string[] {
   const errors: string[] = [];
@@ -56,7 +57,13 @@ export function checkFrontendTags(projects: FrontendProject[]): string[] {
       }
       continue;
     }
-    if (!isFrontendLib(root)) continue;
+    if (!tags.includes('scope:web')) continue;
+    if (!isFrontendLibRoot(root)) {
+      errors.push(
+        `Frontend project "${name}" is in ${root}; frontend libs live in libs/web/<domain>/<type> or libs/ui.`,
+      );
+      continue;
+    }
 
     if (domains.length === 0) {
       errors.push(
@@ -86,6 +93,25 @@ export function checkFrontendTags(projects: FrontendProject[]): string[] {
     } else if (!FRONTEND_TYPES.includes(types[0])) {
       errors.push(
         `Frontend project "${name}" uses unknown tag "${types[0]}"; known types are ${FRONTEND_TYPES.join(', ')}.`,
+      );
+    }
+
+    // libs/web/<domain>/<type> must say what its tags say, so the folder tells the truth about the rules.
+    const [, , folderDomain, folderType] = root.split('/');
+    const domainTag = domains.length === 1 ? domains[0] : undefined;
+    const typeTag = types.length === 1 ? types[0] : undefined;
+    if (
+      root !== 'libs/ui' &&
+      domainTag &&
+      typeTag &&
+      FRONTEND_TYPES.includes(typeTag) &&
+      (domainTag === 'domain:shared' ||
+        FRONTEND_DOMAINS.includes(domainTag.slice('domain:'.length))) &&
+      (domainTag !== `domain:${folderDomain}` ||
+        typeTag !== `type:${folderType}`)
+    ) {
+      errors.push(
+        `Frontend project "${name}" is tagged ${domainTag}, ${typeTag} but lives in ${root}; move it to libs/web/${domainTag.slice('domain:'.length)}/${typeTag.slice('type:'.length)}.`,
       );
     }
   }

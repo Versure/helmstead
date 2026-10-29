@@ -20,7 +20,8 @@ are architecture paths in `scripts/sdlc/risk-paths.json`, so changing one is hig
 ### Domains and layers
 
 Frontend code lives in Nx libs under `libs/web/<domain>/<type>`. `apps/web` is a thin shell. Every frontend project
-carries one `domain:` and one `type:` tag next to its `scope:web` tag (`tools/workspace/scope-tags.ts`):
+carries one `domain:` and one `type:` tag next to its `scope:web` tag, and its folder matches them
+(`tools/workspace/scope-tags.ts`; a `scope:web` lib anywhere else fails):
 
 | Tag                                   | Meaning                                                                    |
 | ------------------------------------- | -------------------------------------------------------------------------- |
@@ -52,8 +53,10 @@ only when its scope, its type and its domain all allow it. The allowed edges, an
 
 Notes on the table:
 
-- `type:feature` lists `type:api` so a feature can use another domain through its api lib. Its own domain's api lib
-  re-exports the feature, so importing that one is a cycle, which Nx rejects as well.
+- `type:feature` lists `type:api` so a feature can use another domain through its api lib. Tags cannot say "another
+  domain", so `tools/eslint/eslint.web.config.mjs` reads the project's own domain and forbids `@helmstead/<own
+  domain>-api` in a feature, and anything but `@helmstead/<own domain>-*` in an api lib (import aliases are
+  `@helmstead/<domain>-<type>`).
 - `type:api` lists no `type:api`, so an api lib cannot re-export another domain.
 - The domain rule needs one constraint per domain. `eslint.config.mjs` builds it from `FRONTEND_DOMAINS` in
   `tools/workspace/frontend-tags.mjs`, and the tag check fails a project whose domain is not in that list, so a new
@@ -74,6 +77,7 @@ No rule is defined twice.
 | Rule                                                                 | Owner                                                      |
 | -------------------------------------------------------------------- | ---------------------------------------------------------- |
 | Edges between projects (scope, type, domain), app ↛ app, cycles      | Nx `@nx/enforce-module-boundaries` (`depConstraints`)       |
+| A feature ↛ its own api lib; an api lib re-exports only its own domain | ESLint `no-restricted-imports`, from the project's domain tag |
 | Buildable libs import only buildable libs                            | Nx `@nx/enforce-module-boundaries`                          |
 | Tags present and known                                               | `tools/workspace/scope-tags.ts` (guard-rail tests)          |
 | No import past a project's `index.ts`, or past a folder module's `index.ts` inside a project | Sheriff `@softarc/sheriff/deep-import` (`sheriff.config.ts`) |
@@ -81,21 +85,30 @@ No rule is defined twice.
 | Design tokens in styles                                              | Stylelint (`stylelint.config.mjs`)                          |
 
 Sheriff tags no modules and its `dependency-rule` is off: tagging modules in Sheriff would define the project rules a
-second time. Sheriff only sees imports, so the thin-shell rule for `apps/web` is an ESLint rule.
+second time. One import is reported by both: a relative import into another project's internals is a relative
+cross-project import for Nx and a deep import for Sheriff. That is the same rule seen from two sides, not two rules to
+keep in step. Sheriff only sees imports, so the thin-shell rule for `apps/web` is an ESLint rule.
 
 ### What code may do
 
 - **HTTP only in data-access.** Outside a `type:data-access` lib, an import from `@angular/common/http` (and its
   subpaths), and `fetch`, `XMLHttpRequest`, `WebSocket` and `EventSource` (also as `window.`/`globalThis.`/`self.`
-  properties) fail lint. The app gets its HTTP client from a data-access lib (`provideCoreHttp()`).
+  properties) fail lint. The app gets its HTTP client from a data-access lib (`provideCoreHttp()`). This keeps code
+  in its place; it is not the network boundary. Other APIs (`navigator.sendBeacon`, a remote `import()`) are not
+  covered, and the shipped app limits where it may connect with the shell's content security policy (`connect-src`).
 - **Contract types only.** In a data-access lib, the type argument of every `HttpClient` method and of `httpResource`
-  must resolve to a type declared in `libs/api-contracts/src` (`helmstead/contract-types`, a typed rule in
-  `tools/eslint/rules/`). It checks the resolved type, so an alias of a local interface, a local interface that extends
+  must resolve to a type declared in `libs/api-contracts/src/generated` (`helmstead/contract-types`, a typed rule in
+  `tools/eslint/rules/`). Calls are found by the signature they resolve to, so an alias of `httpResource` or a subclass
+  of `HttpClient` is checked too; data-access libs use `HttpClient` and `httpResource`, nothing else. It checks the
+  resolved type, including the arguments of a generic alias, so an alias of a local interface, a local interface that extends
   a contract type, an intersection with a local type, `any`, `unknown` and a missing type argument all fail. Map the
   contract type to a model type after the call.
 - **Strict TypeScript.** `strict`, `noUncheckedIndexedAccess`, `noImplicitOverride` and Angular `strictTemplates` are on
   in every frontend tsconfig; `@typescript-eslint/no-explicit-any` and every `no-unsafe-*` rule are errors, with
   type-aware linting (`tools/eslint/strictness.spec.ts`).
+- **No switching off.** A disable comment for any of these rules, for Sheriff, `no-explicit-any` or a `no-unsafe-*`
+  rule is itself a lint error (`no-restricted-disable` in the root config). A project's `eslint.config.mjs` is the
+  one-line shared config; a test fails any other.
 - Lint fixtures for these rules are in `tools/eslint/http.spec.ts` and `tools/eslint/rules/contract-types.spec.ts`.
 
 ### Modern Angular only
@@ -122,7 +135,9 @@ State lives in plain services built on signals, `resource` and `httpResource`. N
   files globally.
 - Stylelint fails a raw colour (hex, colour functions, named colours) anywhere, and a raw value for spacing (`margin`,
   `padding`, `gap`, `inset` and their longhands), `font`, `font-size`, `font-family` or `border-radius`. Only
-  `var(--helm-*)`, `0`, `inherit`, `transparent` and `currentColor` pass. The token files are the one exemption.
+  `var(--helm-*)`, `0`, `inherit`, `transparent` and `currentColor` pass. `--helm-*` properties are declared only in the
+  token files, which are the one exemption. Disable comments are ignored and reported, and `verify.mjs` always runs
+  the root config.
   Frontend styles are plain CSS.
 - angular-eslint's `templateAccessibility` rules are errors in every template.
 

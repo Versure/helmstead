@@ -97,8 +97,36 @@ describe('checkFrontendTags', () => {
     },
   ])('fails a lib tagged $tags', ({ tags, error }) => {
     expect(
-      checkFrontendTags([{ name: 'lib', root: 'libs/web/system/lib', tags }]),
+      checkFrontendTags([{ name: 'lib', root: 'libs/web/system/ui', tags }]),
     ).toEqual([error]);
+  });
+
+  it('fails a scope:web lib outside libs/web/<domain>/<type> and libs/ui', () => {
+    expect(
+      checkFrontendTags([
+        {
+          name: 'stray',
+          root: 'libs/shared-web/stray',
+          tags: ['scope:web', 'domain:shared', 'type:util'],
+        },
+      ]),
+    ).toEqual([
+      'Frontend project "stray" is in libs/shared-web/stray; frontend libs live in libs/web/<domain>/<type> or libs/ui.',
+    ]);
+  });
+
+  it('fails a lib whose folder does not match its tags', () => {
+    expect(
+      checkFrontendTags([
+        {
+          name: 'system-ui',
+          root: 'libs/web/system/ui',
+          tags: ['scope:web', 'domain:system', 'type:feature'],
+        },
+      ]),
+    ).toEqual([
+      'Frontend project "system-ui" is tagged domain:system, type:feature but lives in libs/web/system/ui; move it to libs/web/system/feature.',
+    ]);
   });
 
   it('checks libs/ui like the libs under libs/web', () => {

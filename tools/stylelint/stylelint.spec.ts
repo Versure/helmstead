@@ -70,6 +70,21 @@ describe('raw values fail Stylelint', () => {
     expect(rules.length).toBeGreaterThan(0);
   });
 
+  it('fails a Helm token declared outside the token files', async () => {
+    const { rules } = await lint(':host { --helm-gap: 13px; }');
+
+    expect(rules).toContain('property-disallowed-list');
+  });
+
+  it.each([
+    '/* stylelint-disable */\n.a { color: #fff; }',
+    '.a {\n  /* stylelint-disable-next-line color-no-hex */\n  color: #fff;\n}',
+  ])('fails when a disable comment hides a raw value: %s', async (code) => {
+    const { rules } = await lint(code);
+
+    expect(rules.length).toBeGreaterThan(0);
+  });
+
   it('checks styles in apps/web too', async () => {
     const { rules } = await lint(
       '.a { color: #fff; }',
@@ -121,8 +136,14 @@ describe('verification runs Stylelint', () => {
       'utf8',
     );
 
-    expect(verify).toMatch(
-      /\{ name: 'stylelint[^}]*bin: binOf\('stylelint'\)[^}]*'apps\/web\/\*\*\/\*\.\{css,scss\}'[^}]*'libs\/\*\*\/\*\.\{css,scss\}'/,
+    const step = /\{ name: 'stylelint.*$/m.exec(verify)?.[0] ?? '';
+
+    expect(step).toContain("bin: binOf('stylelint')");
+    expect(step).toContain(
+      "'apps/web/**/*.{css,scss}', 'libs/**/*.{css,scss}'",
     );
+    // Always the root config (a nested config file cannot replace it), and no files is a failure.
+    expect(step).toContain("'--config', 'stylelint.config.mjs'");
+    expect(step).not.toContain('--allow-empty-input');
   });
 });

@@ -1,7 +1,7 @@
 import { createProjectGraphAsync } from '@nx/devkit';
 import tsPlugin from '@typescript-eslint/eslint-plugin';
 import { ESLint, type Linter } from 'eslint';
-import { existsSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import ts from 'typescript';
 import { describe, expect, it } from 'vitest';
@@ -18,8 +18,8 @@ const frontendProjects = Object.values(graph.nodes)
     tags: node.data.tags ?? [],
   }))
   .filter(
-    ({ root }) =>
-      root === 'apps/web' || root === 'libs/ui' || root.startsWith('libs/web/'),
+    ({ root, tags }) =>
+      tags.includes('scope:web') && !root.startsWith('tools/eslint/fixtures/'),
   );
 
 const UNSAFE_RULES = Object.entries(tsPlugin.rules)
@@ -106,6 +106,17 @@ describe('every frontend project is strict', () => {
         });
       },
     );
+
+    it('uses the shared web ESLint config and nothing else', () => {
+      const config = readFileSync(
+        path.join(repoRoot, root, 'eslint.config.mjs'),
+        'utf8',
+      );
+
+      expect(config).toMatch(
+        /^import \{ webProject \} from '(\.\.\/)+tools\/eslint\/eslint\.web\.config\.mjs';\n\nexport default webProject\(import\.meta\.dirname\);\n$/,
+      );
+    });
 
     it('makes no-explicit-any and every no-unsafe-* rule an error', async () => {
       const eslint = new ESLint({

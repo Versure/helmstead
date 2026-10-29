@@ -84,7 +84,7 @@ const HTTP_MESSAGE =
 const HTTP_GLOBALS = ['fetch', 'XMLHttpRequest', 'WebSocket', 'EventSource'];
 
 /** no-restricted-imports options for a project; ESLint does not merge options, so each project gets one set. */
-const restrictedImports = ({ http, dataAccess }) => ({
+const restrictedImports = ({ http, dataAccess, extra = [] }) => ({
   paths: [],
   patterns: [
     {
@@ -109,8 +109,45 @@ const restrictedImports = ({ http, dataAccess }) => ({
           },
         ]
       : []),
+    ...extra,
   ],
 });
+
+/**
+ * Domain edges Nx tags cannot express (ADR-004): a feature reaches other domains through their api lib, never its own;
+ * an api lib re-exports only its own domain. Import aliases are `@helmstead/<domain>-<type>`.
+ */
+const ownDomainRules = (type, domain) => {
+  const extra = {
+    'type:feature': [
+      {
+        group: [`@helmstead/${domain}-api`],
+        message:
+          'A feature uses its own domain directly; a type:api lib is for other domains (ADR-004).',
+      },
+    ],
+    'type:api': [
+      {
+        group: ['@helmstead/*', `!@helmstead/${domain}-*`],
+        message: `A type:api lib re-exports only its own domain (${domain}) (ADR-004).`,
+      },
+    ],
+  }[type];
+
+  return extra && domain
+    ? [
+        {
+          files: ['**/*.ts'],
+          rules: {
+            'no-restricted-imports': [
+              'error',
+              restrictedImports({ http: true, extra }),
+            ],
+          },
+        },
+      ]
+    : [];
+};
 
 const noHttp = {
   files: ['**/*.ts'],
@@ -162,12 +199,19 @@ const byType = {
     {
       files: ['src/app/app.ts'],
       rules: {
-        'no-restricted-syntax': restrictedSyntax({
-          selector:
-            'Decorator[expression.callee.name=/^(Injectable|Directive|Pipe)$/]',
-          message:
-            'apps/web declares only the root component. Put services, directives and pipes in a lib (ADR-004).',
-        }),
+        'no-restricted-syntax': restrictedSyntax(
+          {
+            selector:
+              'Decorator[expression.callee.name=/^(Injectable|Directive|Pipe)$/]',
+            message:
+              'apps/web declares only the root component. Put services, directives and pipes in a lib (ADR-004).',
+          },
+          {
+            selector: 'ClassDeclaration:not([id.name="App"])',
+            message:
+              'apps/web/src/app/app.ts declares only the root component, App (ADR-004).',
+          },
+        ),
       },
     },
   ],
@@ -223,6 +267,9 @@ export function webProject(projectDir) {
     readFileSync(path.join(projectDir, 'project.json'), 'utf8'),
   );
   const type = (project.tags ?? []).find((tag) => tag.startsWith('type:'));
+  const domain = (project.tags ?? [])
+    .find((tag) => tag.startsWith('domain:'))
+    ?.slice('domain:'.length);
   const rules = byType[type];
   if (!rules) {
     throw new Error(
@@ -234,6 +281,7 @@ export function webProject(projectDir) {
   return [
     ...web,
     ...rules,
+    ...ownDomainRules(type, domain),
     ...(project.projectType === 'library' ? [dependencyChecks] : []),
   ];
 }

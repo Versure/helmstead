@@ -67,3 +67,25 @@ describe('HTTP inside a data-access lib', () => {
     expect(errorsOf(messages, rule)).toEqual([]);
   });
 });
+
+describe('switching the frontend rules off', () => {
+  const NO_DISABLE = '@eslint-community/eslint-comments/no-restricted-disable';
+
+  it.each([
+    'no-restricted-imports',
+    'no-restricted-globals',
+    'no-restricted-properties',
+    'no-restricted-syntax',
+    '@softarc/sheriff/deep-import',
+    'helmstead/contract-types',
+    '@typescript-eslint/no-explicit-any',
+    '@typescript-eslint/no-unsafe-assignment',
+  ])('fails lint for a disable comment of %s', async (rule) => {
+    const messages = await lintFixture(
+      OUTSIDE[1] ?? '',
+      `// eslint-disable-next-line ${rule}\nexport const load = () => fetch('/health');\n`,
+    );
+
+    expect(errorsOf(messages, NO_DISABLE)).toHaveLength(1);
+  });
+});

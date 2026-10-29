@@ -256,10 +256,15 @@ describe('apps/web is a thin shell', () => {
       file: 'apps/web/src/app/app.ts',
       code: "import { Injectable } from '@angular/core';\n\n@Injectable({ providedIn: 'root' })\nexport class Clock {}\n",
     },
+    {
+      what: 'a second component next to the root component',
+      file: 'apps/web/src/app/app.ts',
+      code: "import { Component } from '@angular/core';\n\n@Component({ selector: 'hs-root', template: '' })\nexport class App {}\n\n@Component({ selector: 'hs-other', template: '' })\nexport class Other {}\n",
+    },
   ])('fails lint for $what', async ({ file, code }) => {
     const messages = await lintFixture(file, code);
 
-    expect(errorsOf(messages, RESTRICTED)).toHaveLength(1);
+    expect(errorsOf(messages, RESTRICTED).length).toBeGreaterThan(0);
   });
 
   it('accepts the root component', async () => {
@@ -320,6 +325,17 @@ describe('a type:api lib only re-exports', () => {
     );
 
     expect(errorsOf(messages, 'no-restricted-syntax')).toEqual([]);
+  });
+});
+
+describe("domain edges that need the project's own domain", () => {
+  it.each([
+    ['type:feature', "its own domain's type:api", SOURCE.feature, TARGET.api],
+    ['type:api', 'a domain:shared type:ui', SOURCE.api, TARGET.sharedUi],
+  ])('%s → %s fails lint', async (_from, _to, file, target) => {
+    const messages = await lintFixture(file, importOf(target));
+
+    expect(errorsOf(messages, 'no-restricted-imports')).toHaveLength(1);
   });
 });
 

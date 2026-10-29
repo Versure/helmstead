@@ -28,7 +28,7 @@ if (hook) {
     ...git('diff', '--name-only', `${base}...HEAD`).split('\n'),
     ...git('status', '--porcelain').split('\n').map((l) => l.slice(3)),
   ].filter(Boolean);
-  if (!changed.some((f) => /^(apps|libs|tools)\/|^(eslint\.config\.[cm]?js|nx\.json|tsconfig\.base\.json|package\.json)$/.test(f))) process.exit(0);
+  if (!changed.some((f) => /^(apps|libs|tools)\/|^(eslint\.config\.[cm]?js|stylelint\.config\.[cm]?js|sheriff\.config\.ts|nx\.json|tsconfig\.base\.json|package(-lock)?\.json)$/.test(f))) process.exit(0);
 }
 
 if (!existsSync('nx.json')) {
@@ -59,7 +59,7 @@ const steps = [
   { name: 'guard rails (scope tags, lint boundaries)', bin: binOf('vitest'), args: ['run', '--config', 'tools/vitest.config.mts'] },
   { name: 'format check', bin: nx, args: ['format:check'] },
   // Every frontend style uses the Helm tokens (stylelint.config.mjs). A Stylelint error exits non-zero and fails the run.
-  { name: 'stylelint (Helm design tokens)', bin: binOf('stylelint'), args: ['apps/web/**/*.{css,scss}', 'libs/**/*.{css,scss}', '--allow-empty-input'] },
+  { name: 'stylelint (Helm design tokens)', bin: binOf('stylelint'), args: ['apps/web/**/*.{css,scss}', 'libs/**/*.{css,scss}', '--config', 'stylelint.config.mjs'] },
   runAll
     ? { name: 'lint, test, build and contract check of all projects', bin: nx, args: ['run-many', '-t', ...targets] }
     : { name: `lint, test, build and contract check of affected projects (base ${base})`, bin: nx, args: ['affected', '-t', ...targets, `--base=${base}`] },

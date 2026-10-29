@@ -47,3 +47,17 @@ describe('the Helm tokens in libs/ui', () => {
     }
   });
 });
+
+describe('porting a new version of the tokens', () => {
+  it.each([
+    'url(https://example.com/x.png)',
+    '#fff; } body { display: none',
+    '@import "x"',
+    '#fff /* comment */',
+  ])('refuses a value that is not a plain token: %s', (value) => {
+    const tampered = structuredClone(json);
+    tampered.color.tokens[0].value.dark = value;
+
+    expect(() => tokensToCss(tampered)).toThrow(/not a plain token value/);
+  });
+});

@@ -1,28 +1,43 @@
 import { ESLintUtils } from '@typescript-eslint/utils';
+import path from 'node:path';
 import ts from 'typescript';
 
 // Spec 002 criterion 8, docs/adr/004-frontend-architecture.md. A data-access lib types what the core returns with the
 // types generated from the core's OpenAPI contract (libs/api-contracts), never with a hand-written copy. The check
 // runs on the resolved type, not on the name written in the code, so an alias of a local interface, a local interface
-// that extends a contract type, or an intersection with a local type all fail.
+// that extends a contract type, or an intersection with a local type all fail. The calls are recognised by the
+// signature they resolve to, so a variable alias of httpResource or a subclass of HttpClient is checked too.
 
-const CONTRACT_SOURCE = /[\\/]libs[\\/]api-contracts[\\/]src[\\/]/;
-const HTTP_CLIENT_METHODS = new Set([
-  'get',
-  'post',
-  'put',
-  'patch',
-  'delete',
-  'head',
-  'options',
-  'request',
-  'jsonp',
-]);
+// Only the generated files count: the `check` target proves they match the core's OpenAPI document.
+const CONTRACT_DIR = path.resolve(
+  import.meta.dirname,
+  '../../../libs/api-contracts/src/generated',
+);
+const isContractFile = (fileName) =>
+  path.resolve(fileName).startsWith(CONTRACT_DIR + path.sep);
+const ANGULAR_COMMON = /[\\/]@angular[\\/]common[\\/]/;
 
-const isFromAngularHttp = (symbol) =>
-  symbol?.declarations?.some((declaration) =>
-    /[\\/]@angular[\\/]common[\\/]/.test(declaration.getSourceFile().fileName),
-  ) ?? false;
+/** `HttpClient.get` and friends, or `httpResource(…)`, `httpResource.text(…)` and friends; otherwise undefined. */
+function httpCallName(declaration) {
+  if (
+    !declaration ||
+    !ANGULAR_COMMON.test(declaration.getSourceFile().fileName)
+  )
+    return undefined;
+  const owner = declaration.parent;
+  const ownerName =
+    owner && (ts.isClassDeclaration(owner) || ts.isInterfaceDeclaration(owner))
+      ? owner.name?.text
+      : undefined;
+  const member =
+    declaration.name && ts.isIdentifier(declaration.name)
+      ? declaration.name.text
+      : undefined;
+  if (ownerName === 'HttpClient') return `HttpClient.${member}`;
+  if (ownerName === 'HttpResourceFn')
+    return member ? `httpResource.${member}` : 'httpResource';
+  return undefined;
+}
 
 /** True when every part of `type` is declared in the generated contract. */
 function isContractType(checker, type) {
@@ -41,7 +56,11 @@ function isContractType(checker, type) {
   return (
     declarations.length > 0 &&
     declarations.every((declaration) =>
-      CONTRACT_SOURCE.test(declaration.getSourceFile().fileName),
+      isContractFile(declaration.getSourceFile().fileName),
+    ) &&
+    // A generic contract alias is only a contract type when its arguments are too.
+    (type.aliasTypeArguments ?? []).every((argument) =>
+      isContractType(checker, argument),
     )
   );
 }
@@ -96,40 +115,11 @@ export const contractTypes = ESLintUtils.RuleCreator(
 
     return {
       CallExpression(node) {
-        const callee = node.callee;
-
-        // httpResource<T>(…), and httpResource.text<T>(…) and friends.
-        const resourceTarget =
-          callee.type === 'MemberExpression' ? callee.object : callee;
-        if (resourceTarget.type === 'Identifier') {
-          const symbol = checker.getSymbolAtLocation(
-            services.esTreeNodeToTSNodeMap.get(resourceTarget),
-          );
-          const resolved =
-            symbol && symbol.flags & ts.SymbolFlags.Alias
-              ? checker.getAliasedSymbol(symbol)
-              : symbol;
-          if (
-            resolved?.name === 'httpResource' &&
-            isFromAngularHttp(resolved)
-          ) {
-            check(node, context.sourceCode.getText(callee));
-            return;
-          }
-        }
-
-        // http.get<T>(…) where http is an HttpClient.
-        if (
-          callee.type === 'MemberExpression' &&
-          callee.property.type === 'Identifier' &&
-          HTTP_CLIENT_METHODS.has(callee.property.name)
-        ) {
-          const objectType = services.getTypeAtLocation(callee.object);
-          const symbol = objectType.getSymbol();
-          if (symbol?.name === 'HttpClient' && isFromAngularHttp(symbol)) {
-            check(node, `HttpClient.${callee.property.name}`);
-          }
-        }
+        const signature = checker.getResolvedSignature(
+          services.esTreeNodeToTSNodeMap.get(node),
+        );
+        const call = httpCallName(signature?.getDeclaration());
+        if (call) check(node, call);
       },
     };
   },

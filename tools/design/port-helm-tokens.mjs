@@ -18,6 +18,18 @@ export const TOKENS_CSS = path.join(
 
 const kebab = (name) =>
   name.replace(/([a-z0-9])([A-Z])/g, '$1-$2').toLowerCase();
+// The JSON comes from outside the repo and the CSS it becomes is exempt from Stylelint, so only plain values pass:
+// no url(), at-rules, blocks, declarations or comments.
+const UNSAFE = /url\(|@|[{};]|\/\*|\*\/|<|>/i;
+const checked = (name, value) => {
+  if (typeof value !== 'string' || UNSAFE.test(value)) {
+    throw new Error(
+      `Token "${name}" has ${JSON.stringify(value)}, which is not a plain token value.`,
+    );
+  }
+  return value;
+};
+
 const valueIn = (value, theme) =>
   typeof value === 'string' ? value : value[theme];
 
@@ -46,7 +58,9 @@ export function tokensToCss(tokens) {
 
   const declarations = (entries) =>
     entries
-      .map(([name, value]) => `  --helm-${kebab(name)}: ${value};`)
+      .map(
+        ([name, value]) => `  --helm-${kebab(name)}: ${checked(name, value)};`,
+      )
       .join('\n');
   const themeBlock = (theme) =>
     declarations(

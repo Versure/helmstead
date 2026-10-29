@@ -10,8 +10,16 @@ const TOKEN_MESSAGE = (property, value) =>
   `"${property}: ${value}" is a raw value. Use a Helm token, var(--helm-*), from libs/ui/src/tokens.`;
 
 export default {
+  // Disable comments are ignored, and reported, so no file can switch the token rules off.
+  ignoreDisables: true,
+  reportDisables: true,
   ignoreFiles: ['libs/ui/src/tokens/**', '**/dist/**', '**/node_modules/**'],
   rules: {
+    // Helm tokens are defined only in libs/ui/src/tokens; a component cannot mint its own --helm-* value.
+    'property-disallowed-list': [
+      ['/^--helm-/'],
+      { message: 'Define --helm-* tokens only in libs/ui/src/tokens.' },
+    ],
     'color-no-hex': true,
     'color-named': 'never',
     'function-disallowed-list': [

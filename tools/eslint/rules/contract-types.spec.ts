@@ -149,6 +149,30 @@ tester.run('contract-types', contractTypes, {
       errors: [{ messageId: 'anyOrUnknown' }],
     },
     {
+      name: 'httpResource through a variable alias, with a local interface',
+      filename,
+      code: code(
+        "const resource = httpResource;\nexport const health = resource<LocalHealth>(() => '/health');",
+      ),
+      errors: [{ messageId: 'notContract' }],
+    },
+    {
+      name: 'a subclass of HttpClient, with a local interface',
+      filename,
+      code: code(
+        "class CoreHttp extends HttpClient {}\nexport const health$ = inject(CoreHttp).get<LocalHealth>('/health');",
+      ),
+      errors: [{ messageId: 'notContract' }],
+    },
+    {
+      name: 'a contract-like generic alias instantiated with a local type',
+      filename,
+      code: code(
+        "type Envelope<T> = { data: T };\nexport const health$ = http.get<Envelope<LocalHealth>>('/health');",
+      ),
+      errors: [{ messageId: 'notContract' }],
+    },
+    {
       name: 'httpResource without a type argument',
       filename,
       code: code("export const health = httpResource(() => '/health');"),
