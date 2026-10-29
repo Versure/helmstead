@@ -18,13 +18,21 @@ const rules = [
   [/\bgit\s+push\b[^\n;&|]*(\s-f\b|--force(?!-with-lease))/, 'Force pushes are not allowed. Use --force-with-lease on your own work branch if you must.'],
   [/\bgit\s+push\b[^\n;&|]*[\s:+](refs\/heads\/)?(main|master)(?=\s|$|[;&|])/, 'Never push to main. Push your work branch and open a PR.'],
   [/--no-verify\b/, 'Do not skip git hooks.'],
-  [/\bgh\s+api\b[^\n]*\/(protection|rulesets)\b/, 'Branch protection is the owner\'s to change.'],
   [/\bgh\s+(repo\s+edit|ruleset)\b/, 'Repository settings are the owner\'s to change.'],
   [/\bgh\s+label\s+(create|edit|delete)\b[^\n]*\b(risk:|needs-owner-review)/, 'Risk labels are set by the risk gate.'],
 ];
 
 for (const [pattern, reason] of rules) {
   if (pattern.test(cmd)) block(reason);
+}
+
+// Reading branch protection is fine; changing it is not. `gh api` sends a write when the
+// method says so or when fields/input are given (it then defaults to POST).
+const protectionRest = /\bgh\s+api\b[^\n]*\/(protection|rulesets)\b/;
+const restWrite = /\s(-X\s*|--method[\s=]+)(PUT|POST|PATCH|DELETE)\b|\s(-f|-F|--field|--raw-field|--input)(\s|=|$)/i;
+const protectionGraphql = /\bgh\s+api\s+graphql\b[^\n]*\bmutation\b[^\n]*(BranchProtection|Ruleset)/i;
+if ((protectionRest.test(cmd) && restWrite.test(cmd)) || protectionGraphql.test(cmd)) {
+  block('Branch protection is the owner\'s to change.');
 }
 
 if (/\bgit\s+(commit|push)\b/.test(cmd)) {
