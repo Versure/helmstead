@@ -99,3 +99,8 @@ High risk, by design: this spec sets the rules every later change is judged by.
 - Live API calls are already banned in tests by plan §9; none are needed here.
 
 ## Open questions
+
+## Changes after owner review (PR #2)
+- The .NET projects are folded into Nx with `@nx/dotnet` (was: `project.json` with run-commands). The fixtures are build-only Nx projects, because the test project references them and Nx must see that to cache correctly; they stay out of the real-assembly scan.
+- Criterion 3 changed: the core is vertical slices with CQRS inside `Helmstead.Core.Api` (ADR 003). `Helmstead.Core.Domain` and `Helmstead.Core.Persistence` no longer exist; the Domain and Persistence rules of criterion 7 became the slice, CQRS and domain-code rules.
+- Angular best practices are enforced by `tools/eslint/eslint.angular.config.mjs` for `apps/web` and `libs/ui` (angular-eslint recommended and accessibility presets, typescript-eslint strict, plus modern-Angular rules). Sheriff and the DDD layout stay in spec 002.

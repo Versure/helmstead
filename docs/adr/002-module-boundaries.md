@@ -41,11 +41,14 @@ at build time, the TypeScript types in `libs/api-contracts/src/generated/` are g
 
 ### Core (.NET)
 
-ArchUnitNET rules in `apps/core/tests/Helmstead.Core.Tests/Architecture/` apply to assemblies found by name pattern,
-so a project added later is covered without editing the tests:
+Every `.csproj` is an Nx project (the `@nx/dotnet` plugin infers them): `core` is `Helmstead.Core.Api`, `core-tests` the
+tests, and each fixture a build-only project. All carry `scope:core`.
 
-- `Helmstead.Core.Domain` references no other `Helmstead.*` assembly, no ASP.NET Core, no EF Core and no `System.Net.Http`.
-- `Helmstead.Core.Persistence` does not reference `Helmstead.Core.Api`.
+ArchUnitNET rules in `apps/core/tests/Helmstead.Core.Tests/Architecture/` apply to assemblies and namespaces found by
+pattern, so a project or slice added later is covered without editing the tests. The slice and CQRS rules are in
+[ADR 003](003-vertical-slices-and-cqrs.md). The rules between assemblies are:
+
+- Domain code (`...Features.<Slice>.Domain`) references no ASP.NET Core, no EF Core and no `System.Net.Http`.
 - Only `Helmstead.Core.Api` references ASP.NET Core.
 - A `Helmstead.Connectors.*` assembly references no other connector, nor `Helmstead.Agents`, nor `Helmstead.Providers`.
 - `Helmstead.Agents` references no `Helmstead.Connectors.*`.
@@ -83,7 +86,9 @@ The ESLint config, project tags, formatting config, the architecture tests and t
   to the Nx target only.
 - Every project under `apps/core/src` must match one of the assembly name patterns of the rules, or a test fails.
   Connectors may not share a `Helmstead.Connectors.*` assembly, because a connector may not reference another one;
-  shared connector contracts belong in `Helmstead.Core.Domain`, or a new ADR must change the rule.
+  shared connector contracts belong in the shared kernel (`Helmstead.Core.Api.Shared`), or a new ADR must change the rule.
+- The `@nx/dotnet` targets build with `--no-restore`, so `verify.mjs` and CI restore NuGet packages once first
+  (`dotnet restore apps/core/Helmstead.Core.slnx`). After a fresh clone, run that before `npx nx build core`.
 - The relative-path edge cases (web or ui importing the core by a relative path) are rejected by Nx for any
   project-to-project relative import, whatever the tags. Tag-based rejection for those pairs is only visible when the
   core has TypeScript with an import alias, which it does not have.
