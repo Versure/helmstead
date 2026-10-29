@@ -59,8 +59,8 @@ export default [
               ],
             },
             {
-              // type:api is here only so a feature can use another domain's api lib; its own domain's api lib
-              // re-exports this feature, so importing it is a cycle that Nx rejects anyway.
+              // type:api is here only so a feature can use another domain's api lib. Its own domain's api lib is
+              // forbidden by no-restricted-imports in tools/eslint/eslint.web.config.mjs (tags cannot say "another").
               sourceTag: 'type:feature',
               onlyDependOnLibsWithTags: [
                 'type:ui',
