@@ -1,5 +1,8 @@
 import nx from '@nx/eslint-plugin';
+import eslintComments from '@eslint-community/eslint-plugin-eslint-comments';
 
+// The allowed edges between projects are defined in docs/adr/002-module-boundaries.md.
+// Changing this file changes those rules, so the risk gate treats it as high risk.
 export default [
   ...nx.configs['flat/base'],
   ...nx.configs['flat/typescript'],
@@ -17,8 +20,16 @@ export default [
           allow: ['^.*/eslint(\\.base)?\\.config\\.[cm]?[jt]s$'],
           depConstraints: [
             {
-              sourceTag: '*',
-              onlyDependOnLibsWithTags: ['*'],
+              sourceTag: 'scope:web',
+              onlyDependOnLibsWithTags: ['scope:web', 'scope:shared'],
+            },
+            {
+              sourceTag: 'scope:core',
+              onlyDependOnLibsWithTags: ['scope:core', 'scope:shared'],
+            },
+            {
+              sourceTag: 'scope:shared',
+              onlyDependOnLibsWithTags: ['scope:shared'],
             },
           ],
         },
@@ -26,6 +37,7 @@ export default [
     },
   },
   {
+    // A boundary rule that can be switched off with a comment is not a rule.
     files: [
       '**/*.ts',
       '**/*.tsx',
@@ -36,7 +48,12 @@ export default [
       '**/*.cjs',
       '**/*.mjs',
     ],
-    // Override or add rules here
-    rules: {},
+    plugins: { '@eslint-community/eslint-comments': eslintComments },
+    rules: {
+      '@eslint-community/eslint-comments/no-restricted-disable': [
+        'error',
+        '@nx/enforce-module-boundaries',
+      ],
+    },
   },
 ];
