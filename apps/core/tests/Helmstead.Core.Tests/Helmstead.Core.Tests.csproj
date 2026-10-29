@@ -18,9 +18,14 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\src\Helmstead.Core.Api\Helmstead.Core.Api.csproj" />
-    <ProjectReference Include="..\..\src\Helmstead.Core.Domain\Helmstead.Core.Domain.csproj" />
-    <ProjectReference Include="..\..\src\Helmstead.Core.Persistence\Helmstead.Core.Persistence.csproj" />
+    <!-- Every project under src/ is referenced by glob, so the architecture tests cover a project added later
+         without editing this file. Their assemblies land in the test output folder and are found by name. -->
+    <ProjectReference Include="..\..\src\*\*.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Deliberately violating assemblies for the negative architecture tests. Never scanned as real code. -->
+    <ProjectReference Include="..\fixtures\*\*.csproj" />
   </ItemGroup>
 
 </Project>
