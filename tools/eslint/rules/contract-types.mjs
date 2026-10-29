@@ -24,6 +24,15 @@ function httpCallName(declaration) {
     !ANGULAR_COMMON.test(declaration.getSourceFile().fileName)
   )
     return undefined;
+  // httpResource.text/blob/arrayBuffer are call signatures in a type literal: HttpResourceFn > property > literal.
+  if (
+    ts.isTypeLiteralNode(declaration.parent) &&
+    ts.isPropertySignature(declaration.parent.parent) &&
+    ts.isInterfaceDeclaration(declaration.parent.parent.parent) &&
+    declaration.parent.parent.parent.name.text === 'HttpResourceFn'
+  ) {
+    return `httpResource.${declaration.parent.parent.name.getText()}`;
+  }
   const owner = declaration.parent;
   const ownerName =
     owner && (ts.isClassDeclaration(owner) || ts.isInterfaceDeclaration(owner))
@@ -37,6 +46,44 @@ function httpCallName(declaration) {
   if (ownerName === 'HttpResourceFn')
     return member ? `httpResource.${member}` : 'httpResource';
   return undefined;
+}
+
+/** The declarations of a type reference's name, through import aliases. */
+function declarationsOf(checker, typeName) {
+  const symbol = checker.getSymbolAtLocation(typeName);
+  const resolved =
+    symbol && symbol.flags & ts.SymbolFlags.Alias
+      ? checker.getAliasedSymbol(symbol)
+      : symbol;
+  return resolved?.declarations ?? [];
+}
+
+/**
+ * True when the written type is a lookup into a contract type, e.g. `components['schemas']['Health']['status']`, or a
+ * local alias of one. Covers contract schemas that resolve to a primitive or a union of literals, which have no
+ * declaration of their own.
+ */
+function isContractLookup(checker, typeNode, depth = 0) {
+  if (!typeNode || depth > 5) return false;
+  if (ts.isIndexedAccessTypeNode(typeNode)) {
+    let root = typeNode.objectType;
+    while (ts.isIndexedAccessTypeNode(root)) root = root.objectType;
+    return (
+      ts.isTypeReferenceNode(root) &&
+      declarationsOf(checker, root.typeName).some((declaration) =>
+        isContractFile(declaration.getSourceFile().fileName),
+      )
+    );
+  }
+  if (ts.isTypeReferenceNode(typeNode) && !typeNode.typeArguments) {
+    const [alias] = declarationsOf(checker, typeNode.typeName);
+    return (
+      alias !== undefined &&
+      ts.isTypeAliasDeclaration(alias) &&
+      isContractLookup(checker, alias.type, depth + 1)
+    );
+  }
+  return false;
 }
 
 /** True when every part of `type` is declared in the generated contract. */
@@ -90,10 +137,14 @@ export const contractTypes = ESLintUtils.RuleCreator(
     const services = ESLintUtils.getParserServices(context);
     const checker = services.program.getTypeChecker();
 
-    function check(node, call) {
+    function check(node, call, signature) {
       const typeArgument = node.typeArguments?.params[0];
       if (!typeArgument) {
-        context.report({ node, messageId: 'missing', data: { call } });
+        // Only a JSON call needs one; text, blob and arrayBuffer responses have no type argument to give.
+        const returned = checker.typeToString(signature.getReturnType());
+        if (/<(Object|unknown)( \| undefined)?>/.test(returned)) {
+          context.report({ node, messageId: 'missing', data: { call } });
+        }
         return;
       }
       const type = services.getTypeAtLocation(typeArgument);
@@ -104,7 +155,15 @@ export const contractTypes = ESLintUtils.RuleCreator(
           messageId: 'anyOrUnknown',
           data: { call, type: text },
         });
-      } else if (!isContractType(checker, type)) {
+      } else if (
+        // void: a response without content.
+        !(type.flags & ts.TypeFlags.Void) &&
+        !isContractType(checker, type) &&
+        !isContractLookup(
+          checker,
+          services.esTreeNodeToTSNodeMap.get(typeArgument),
+        )
+      ) {
         context.report({
           node: typeArgument,
           messageId: 'notContract',
@@ -119,7 +178,7 @@ export const contractTypes = ESLintUtils.RuleCreator(
           services.esTreeNodeToTSNodeMap.get(node),
         );
         const call = httpCallName(signature?.getDeclaration());
-        if (call) check(node, call);
+        if (call) check(node, call, signature);
       },
     };
   },

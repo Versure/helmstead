@@ -64,6 +64,30 @@ tester.run('contract-types', contractTypes, {
       ),
     },
     {
+      name: 'a text response, which has no type argument to give',
+      filename,
+      code: code(
+        "export const text$ = http.get('/health', { responseType: 'text' });",
+      ),
+    },
+    {
+      name: 'httpResource.text without a type argument',
+      filename,
+      code: code("export const text = httpResource.text(() => '/health');"),
+    },
+    {
+      name: 'a primitive reached through the contract',
+      filename,
+      code: code(
+        "export const status$ = http.get<components['schemas']['HealthResponse']['status']>('/health/status');",
+      ),
+    },
+    {
+      name: 'void for a response without content',
+      filename,
+      code: code("export const deleted$ = http.delete<void>('/things/1');"),
+    },
+    {
       name: 'a get on something that is not HttpClient',
       filename,
       code: code(
@@ -165,11 +189,27 @@ tester.run('contract-types', contractTypes, {
       errors: [{ messageId: 'notContract' }],
     },
     {
+      // openapi-typescript emits no generic aliases today, so this fails on the local alias; the rule also checks a
+      // contract alias's type arguments for when it does.
       name: 'a contract-like generic alias instantiated with a local type',
       filename,
       code: code(
         "type Envelope<T> = { data: T };\nexport const health$ = http.get<Envelope<LocalHealth>>('/health');",
       ),
+      errors: [{ messageId: 'notContract' }],
+    },
+    {
+      name: 'httpResource.text with a local type argument',
+      filename,
+      code: code(
+        "export const text = httpResource.text<LocalHealth>(() => '/health');",
+      ),
+      errors: [{ messageId: 'notContract' }],
+    },
+    {
+      name: 'a primitive that does not come from the contract',
+      filename,
+      code: code("export const status$ = http.get<string>('/health/status');"),
       errors: [{ messageId: 'notContract' }],
     },
     {

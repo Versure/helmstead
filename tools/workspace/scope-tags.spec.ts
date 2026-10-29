@@ -115,6 +115,25 @@ describe('checkFrontendTags', () => {
     ]);
   });
 
+  it('fails a project with frontend tags that is not scope:web', () => {
+    expect(
+      checkFrontendTags([
+        {
+          name: 'sneaky',
+          root: 'libs/sneaky',
+          tags: ['scope:shared', 'domain:shared', 'type:util'],
+        },
+        {
+          name: 'api-contracts',
+          root: 'libs/api-contracts',
+          tags: ['scope:shared', 'domain:shared', 'type:contracts'],
+        },
+      ]),
+    ).toEqual([
+      'Project "sneaky" carries frontend tags (domain:shared, type:util) but not scope:web; frontend projects are scope:web.',
+    ]);
+  });
+
   it('fails a lib whose folder does not match its tags', () => {
     expect(
       checkFrontendTags([

@@ -100,7 +100,10 @@ keep in step. Sheriff only sees imports, so the thin-shell rule for `apps/web` i
   must resolve to a type declared in `libs/api-contracts/src/generated` (`helmstead/contract-types`, a typed rule in
   `tools/eslint/rules/`). Calls are found by the signature they resolve to, so an alias of `httpResource` or a subclass
   of `HttpClient` is checked too; data-access libs use `HttpClient` and `httpResource`, nothing else. It checks the
-  resolved type, including the arguments of a generic alias, so an alias of a local interface, a local interface that extends
+  resolved type, including the arguments of a generic alias, and accepts a lookup into a contract type
+  (`components['schemas']['X']['status']`, for schemas that resolve to a primitive or literal union) and `void` (no
+  content). Calls that cannot take a type argument (`responseType: 'text'`, `httpResource.text`) need none. Since the
+  rule cannot be switched off for a line, a false positive is fixed in the rule. An alias of a local interface, a local interface that extends
   a contract type, an intersection with a local type, `any`, `unknown` and a missing type argument all fail. Map the
   contract type to a model type after the call.
 - **Strict TypeScript.** `strict`, `noUncheckedIndexedAccess`, `noImplicitOverride` and Angular `strictTemplates` are on

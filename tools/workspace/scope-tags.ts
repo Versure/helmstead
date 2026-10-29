@@ -57,7 +57,19 @@ export function checkFrontendTags(projects: FrontendProject[]): string[] {
       }
       continue;
     }
-    if (!tags.includes('scope:web')) continue;
+    if (!tags.includes('scope:web')) {
+      // Frontend tags outside scope:web would let a project be imported by every layer without the web lint rules.
+      const frontendTags = [
+        ...domains,
+        ...types.filter((tag) => FRONTEND_TYPES.includes(tag)),
+      ];
+      if (types.some((tag) => FRONTEND_TYPES.includes(tag))) {
+        errors.push(
+          `Project "${name}" carries frontend tags (${frontendTags.join(', ')}) but not scope:web; frontend projects are scope:web.`,
+        );
+      }
+      continue;
+    }
     if (!isFrontendLibRoot(root)) {
       errors.push(
         `Frontend project "${name}" is in ${root}; frontend libs live in libs/web/<domain>/<type> or libs/ui.`,

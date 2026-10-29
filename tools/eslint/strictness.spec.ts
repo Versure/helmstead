@@ -1,7 +1,7 @@
 import { createProjectGraphAsync } from '@nx/devkit';
 import tsPlugin from '@typescript-eslint/eslint-plugin';
 import { ESLint, type Linter } from 'eslint';
-import { existsSync, readFileSync } from 'node:fs';
+import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import ts from 'typescript';
 import { describe, expect, it } from 'vitest';
@@ -106,6 +106,15 @@ describe('every frontend project is strict', () => {
         });
       },
     );
+
+    it('has exactly one ESLint config, at its root', () => {
+      const configs = readdirSync(path.join(repoRoot, root), {
+        recursive: true,
+        encoding: 'utf8',
+      }).filter((file) => /(^|[\\/])eslint\.config\.[cm]?[jt]s$/.test(file));
+
+      expect(configs).toEqual(['eslint.config.mjs']);
+    });
 
     it('uses the shared web ESLint config and nothing else', () => {
       const config = readFileSync(
