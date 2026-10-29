@@ -1,0 +1,27 @@
+name: ci
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  ci:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - id: workspace
+        run: |
+          if [ -f nx.json ]; then echo "present=true" >> "$GITHUB_OUTPUT"; else echo "present=false" >> "$GITHUB_OUTPUT"; fi
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      # Phase 0 adds the toolchains here (.NET, Rust for Tauri) along with the Nx workspace.
+      - if: steps.workspace.outputs.present == 'true'
+        run: npm ci
+      - run: node scripts/sdlc/verify.mjs --base ${{ github.event.pull_request.base.sha || 'HEAD~1' }}

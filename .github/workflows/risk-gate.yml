@@ -1,0 +1,38 @@
+name: risk-gate
+
+# Classifies every PR and sets the required `risk-gate` status: low risk auto-merges,
+# high risk waits for the owner's `human-approved` label. See docs/sdlc.md.
+#
+# pull_request_target runs this workflow and its scripts from the base branch, so a PR
+# cannot change the rules it is judged by. It never checks out or runs PR code: the PR
+# head is only fetched as git objects to diff file names.
+
+on:
+  pull_request_target:
+    types: [opened, reopened, synchronize, edited, labeled, unlabeled, ready_for_review]
+
+permissions:
+  contents: write
+  pull-requests: write
+  issues: write
+  statuses: write
+
+concurrency:
+  group: risk-gate-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  classify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.base.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: node scripts/sdlc/risk-gate.mjs
+        env:
+          GH_TOKEN: ${{ github.token }}

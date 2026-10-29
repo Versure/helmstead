@@ -1,0 +1,68 @@
+{
+  "$comment": "Path rules for the risk gate. A change that touches any pattern below is high risk and waits for the owner. Patterns are globs (** = any depth, * = within one folder, {a,b} = either), matched case-insensitively against repo-relative paths. Changing this file is itself high risk (pipeline).",
+  "maxAutoMergeLines": 1000,
+  "sizeIgnore": ["**/package-lock.json", "**/pnpm-lock.yaml", "**/Cargo.lock", "**/packages.lock.json", "**/*.snap", "docs/**"],
+  "categories": {
+    "security": {
+      "title": "Security & permissions",
+      "paths": [
+        "apps/shell/**",
+        "**/capabilities/**",
+        "**/tauri.conf.json",
+        "apps/core/src/Helmstead.Agents/**",
+        "{apps,libs}/**/*{auth,secret,keychain,credential,permission,crypto,sandbox,csp,mcp}*{,/**}",
+        "{apps,libs}/**/*{session,access,api,refresh,bearer}{-,_,.,}token*{,/**}",
+        "**/appsettings*.json",
+        "**/.env*",
+        "SECURITY.md"
+      ]
+    },
+    "architecture": {
+      "title": "Architecture & contracts",
+      "paths": [
+        "libs/api-contracts/**",
+        "apps/core/src/Helmstead.Core.Domain/**",
+        "{apps,libs}/**/*{acp,ipc,sidecar}*{,/**}",
+        "{apps,libs}/*/project.json",
+        "nx.json",
+        "tsconfig.base.json",
+        "**/*.sln",
+        "**/*.slnx",
+        "docs/adr/**",
+        "docs/plan.md"
+      ]
+    },
+    "data": {
+      "title": "Data & storage",
+      "paths": [
+        "**/migrations/**",
+        "apps/core/src/Helmstead.Core.Persistence/**",
+        "**/*.sql",
+        "{apps,libs}/**/*{dbcontext,repository,retention,storage}*{,/**}"
+      ]
+    },
+    "pipeline": {
+      "title": "Dependencies & pipeline",
+      "paths": [
+        ".github/**",
+        ".claude/**",
+        "scripts/sdlc/**",
+        "CLAUDE.md",
+        "AGENTS.md",
+        "docs/sdlc.md",
+        "**/package.json",
+        "**/package-lock.json",
+        "**/pnpm-lock.yaml",
+        ".npmrc",
+        "**/*.csproj",
+        "**/Directory.Packages.props",
+        "**/Directory.Build.*",
+        "**/nuget.config",
+        "global.json",
+        "**/Cargo.toml",
+        "**/Cargo.lock",
+        "**/Dockerfile"
+      ]
+    }
+  }
+}
