@@ -12,7 +12,12 @@ The build plan is `docs/plan.md`; §10 holds the working rules for agents. Decis
 
 - Verify a change (lint, test, build of affected projects): `node scripts/sdlc/verify.mjs`
 - Risk of the current branch: `node scripts/sdlc/classify-risk.mjs`
-- Phase 0 has not created the Nx workspace yet. When it does, add the install command and how to run a single test file (Angular and .NET) here.
+- Install (Node 22+ and the .NET SDK pinned in `global.json`): `npm ci`
+- One Angular test file: `npx nx test web --include=apps/web/src/app/app.spec.ts` (path from the repo root)
+- One .NET test or test class: `dotnet test apps/core/Helmstead.Core.slnx --filter "FullyQualifiedName~HealthEndpointTests"`
+- Regenerate the API contract after changing a core endpoint or DTO, then commit the result: `npx nx run api-contracts:generate`. `npx nx run api-contracts:check` fails when the committed contract is out of date.
+- Run the core: `npx nx serve core` (listens on `http://127.0.0.1:5108` only)
+- Project boundaries are in `docs/adr/002-module-boundaries.md`. Do not add `eslint-disable` for `@nx/enforce-module-boundaries`; lint rejects it. Changing the boundary rules, tags or architecture tests is high risk and waits for the owner.
 
 # Conventions
 
