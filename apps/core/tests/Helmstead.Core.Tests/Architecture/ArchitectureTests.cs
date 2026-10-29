@@ -7,21 +7,22 @@ public sealed class ArchitectureTests
 {
     private static readonly Lazy<Architecture> Real = new(() => Load(AssemblyDiscovery.RealAssemblyNames(AssemblyDiscovery.NamesInOutputFolder())));
 
-    // The Persistence fixture depends on the real Api assembly, so that one is loaded next to the fixtures
-    // for the dependency to resolve to a named assembly. Nothing else of the real code is loaded.
     private static readonly Lazy<Architecture> Fixtures = new(() =>
-        Load([.. AssemblyDiscovery.FixtureAssemblyNames(AssemblyDiscovery.NamesInOutputFolder()), "Helmstead.Core.Api"]));
+        Load(AssemblyDiscovery.FixtureAssemblyNames(AssemblyDiscovery.NamesInOutputFolder())));
 
     // Each rule, with the dependency the fixtures contain for it. A rule that stops looking for that
     // dependency (a clause deleted from a predicate) fails here even though another clause still fires.
     private static readonly Dictionary<string, string> ExpectedViolation = new()
     {
-        ["Domain references no other Helmstead assembly"] = "Helmstead.Connectors.FixtureB.FixtureBType",
-        ["Domain references no ASP.NET Core"] = "Microsoft.AspNetCore.Http.HttpContext",
-        ["Domain references no EF Core"] = "Microsoft.EntityFrameworkCore.FixtureDbContext",
-        ["Domain references no System.Net.Http"] = "System.Net.Http.HttpClient",
-        ["Persistence does not reference Api"] = "Helmstead.Core.Api.HealthResponse",
+        ["Domain code references no ASP.NET Core"] = "Microsoft.AspNetCore.Http.HttpContext",
+        ["Domain code references no EF Core"] = "Microsoft.EntityFrameworkCore.FixtureDbContext",
+        ["Domain code references no System.Net.Http"] = "System.Net.Http.HttpClient",
         ["Only Api references ASP.NET Core"] = "Microsoft.AspNetCore.Http.HttpContext",
+        ["A slice references no other slice"] = "Helmstead.Core.Api.Features.Billing.Invoice",
+        ["The shared kernel references no slice"] = "Helmstead.Core.Api.Features.Billing.Invoice",
+        ["Queries reference no commands"] = "Helmstead.Core.Api.Features.Orders.Commands.PlaceOrder",
+        ["Commands reference no queries"] = "Helmstead.Core.Api.Features.Orders.Queries.ListOrders",
+        ["Queries never write"] = "SaveChangesAsync",
         ["A connector references no other connector"] = "Helmstead.Connectors.FixtureB.FixtureBType",
         ["A connector references no Agents"] = "Helmstead.Agents.Fixture.AgentFixtureType",
         ["A connector references no Providers"] = "Helmstead.Providers.Fixture.ProviderFixtureType",
@@ -42,12 +43,15 @@ public sealed class ArchitectureTests
     {
         Assert.Equal(
             [
-                "Domain references no other Helmstead assembly",
-                "Domain references no ASP.NET Core",
-                "Domain references no EF Core",
-                "Domain references no System.Net.Http",
-                "Persistence does not reference Api",
+                "Domain code references no ASP.NET Core",
+                "Domain code references no EF Core",
+                "Domain code references no System.Net.Http",
                 "Only Api references ASP.NET Core",
+                "A slice references no other slice",
+                "The shared kernel references no slice",
+                "Queries reference no commands",
+                "Commands reference no queries",
+                "Queries never write",
                 "A connector references no other connector",
                 "A connector references no Agents",
                 "A connector references no Providers",
@@ -65,8 +69,6 @@ public sealed class ArchitectureTests
         var names = Real.Value.Assemblies.Select(assembly => assembly.Name).ToArray();
 
         Assert.Contains("Helmstead.Core.Api", names);
-        Assert.Contains("Helmstead.Core.Domain", names);
-        Assert.Contains("Helmstead.Core.Persistence", names);
         Assert.DoesNotContain(names, name => name.Contains("Fixture", StringComparison.Ordinal));
     }
 

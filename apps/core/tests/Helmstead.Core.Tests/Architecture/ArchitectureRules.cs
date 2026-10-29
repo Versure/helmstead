@@ -1,25 +1,27 @@
 using System.Text.RegularExpressions;
 using ArchUnitNET.Domain;
+using ArchUnitNET.Domain.Extensions;
 using ArchUnitNET.Fluent;
 using ArchUnitNET.Fluent.Conditions;
 using static ArchUnitNET.Fluent.ArchRuleDefinition;
 
 namespace Helmstead.Core.Tests.Boundaries;
 
-/// <summary>One layer rule: types in assemblies matching <see cref="Subject"/> must not depend on <see cref="Forbidden"/>.</summary>
-public sealed record LayerRule(string Name, string Why, Regex Subject, Func<IType, IType, bool> Forbidden)
+/// <summary>
+/// One architecture rule: types that match <see cref="Subject"/> must not have a dependency for which
+/// <see cref="Violation"/> returns a description.
+/// </summary>
+public sealed record LayerRule(string Name, string Why, Func<IType, bool> Subject, Func<IType, string?> Violation)
 {
     public IArchRule ToArchRule() =>
-        Types().That().FollowCustomPredicate(type => Subject.IsMatch(type.Assembly.Name), $"reside in an assembly matching {Subject}")
+        Types().That().FollowCustomPredicate(Subject, Name)
             .Should().FollowCustomCondition(
                 type =>
                 {
-                    var violation = type.Dependencies
-                        .Select(dependency => dependency.Target)
-                        .FirstOrDefault(target => Forbidden(type, target));
+                    var violation = Violation(type);
                     return violation is null
                         ? new ConditionResult(type, true)
-                        : new ConditionResult(type, false, $"depends on {violation.FullName}");
+                        : new ConditionResult(type, false, $"depends on {violation}");
                 },
                 Why)
             .Because(Why)
@@ -30,83 +32,132 @@ public sealed record LayerRule(string Name, string Why, Regex Subject, Func<ITyp
 }
 
 /// <summary>
-/// The .NET layer rules of ADR-002. They match assemblies by name pattern, so projects added later are covered.
-/// Bounded-context rules are added by the specs that create those modules.
+/// The .NET architecture rules of ADR-002 and ADR-003: the core is vertical slices with CQRS, and the harness,
+/// the model providers and the connectors stay separate. Rules match assemblies and namespaces by pattern,
+/// so projects and slices added later are covered.
 /// </summary>
 public static class ArchitectureRules
 {
-    private static readonly Regex Domain = new(@"^Helmstead\.Core\.Domain(\.|$)");
-    private static readonly Regex Persistence = new(@"^Helmstead\.Core\.Persistence(\.|$)");
+    private const string Features = @"^Helmstead\.Core\.Api\.Features\.";
+
     private static readonly Regex Api = new(@"^Helmstead\.Core\.Api(\.|$)");
+    private static readonly Regex NotApi = new(@"^Helmstead\.(?!Core\.Api(\.|$))");
     private static readonly Regex Connectors = new(@"^Helmstead\.Connectors\.");
     private static readonly Regex Agents = new(@"^Helmstead\.Agents(\.|$)");
     private static readonly Regex Providers = new(@"^Helmstead\.Providers(\.|$)");
-    private static readonly Regex AnyHelmstead = new(@"^Helmstead\.");
-    private static readonly Regex NotApi = new(@"^Helmstead\.(?!Core\.Api(\.|$))");
+
+    // Namespace layout of a slice: Helmstead.Core.Api.Features.<Slice>[.Commands|.Queries|.Domain].
+    private static readonly Regex Slice = new(Features + @"(?<slice>[^.]+)(\.|$)");
+    private static readonly Regex DomainOfSlice = new(Features + @"[^.]+\.Domain(\.|$)");
+    private static readonly Regex CommandsOfSlice = new(Features + @"[^.]+\.Commands(\.|$)");
+    private static readonly Regex QueriesOfSlice = new(Features + @"[^.]+\.Queries(\.|$)");
+    private static readonly Regex SharedKernel = new(@"^Helmstead\.Core\.Api\.Shared(\.|$)");
 
     private static readonly Regex AspNetCore = new(@"^Microsoft\.AspNetCore\.");
     private static readonly Regex EfCore = new(@"^Microsoft\.EntityFrameworkCore(\.|$)");
     private static readonly Regex Http = new(@"^System\.Net\.Http(\.|$)");
+    private static readonly Regex Write = new(@"^(SaveChanges|ExecuteUpdate|ExecuteDelete)");
 
     public static IReadOnlyList<LayerRule> All { get; } =
     [
-        new("Domain references no other Helmstead assembly",
-            "Domain depends on nothing (plan §2, ADR-002).",
-            Domain,
-            (type, target) => InOtherAssembly(type, target, AnyHelmstead)),
-        new("Domain references no ASP.NET Core",
-            "Domain stays free of web concerns.",
-            Domain,
-            (_, target) => AspNetCore.IsMatch(target.FullName)),
-        new("Domain references no EF Core",
-            "Domain stays free of storage concerns.",
-            Domain,
-            (_, target) => EfCore.IsMatch(target.FullName)),
-        new("Domain references no System.Net.Http",
-            "Domain does not talk to the network.",
-            Domain,
-            (_, target) => Http.IsMatch(target.FullName)),
-        new("Persistence does not reference Api",
-            "Dependencies point from Api to Persistence, never back.",
-            Persistence,
-            (type, target) => InOtherAssembly(type, target, Api)),
+        new("Domain code references no ASP.NET Core",
+            "Domain code stays free of web concerns (ADR-003).",
+            InNamespace(DomainOfSlice),
+            TargetMatches(AspNetCore)),
+        new("Domain code references no EF Core",
+            "Domain code stays free of storage concerns (ADR-003).",
+            InNamespace(DomainOfSlice),
+            TargetMatches(EfCore)),
+        new("Domain code references no System.Net.Http",
+            "Domain code does not talk to the network (ADR-003).",
+            InNamespace(DomainOfSlice),
+            TargetMatches(Http)),
         new("Only Api references ASP.NET Core",
             "Web concerns live in Helmstead.Core.Api only.",
-            NotApi,
-            (_, target) => AspNetCore.IsMatch(target.FullName)),
+            InAssembly(NotApi),
+            TargetMatches(AspNetCore)),
+        // Vertical slices: a feature owns its code, from endpoint to storage.
+        new("A slice references no other slice",
+            "A slice depends on the shared kernel only, never on another slice (ADR-003).",
+            InNamespace(Slice),
+            (type) => type.Dependencies
+                .Select(dependency => dependency.Target)
+                .Where(target => SliceOf(target) is not null && SliceOf(target) != SliceOf(type))
+                .Select(target => target.FullName)
+                .FirstOrDefault()),
+        new("The shared kernel references no slice",
+            "Shared code is below the slices, so it cannot depend on them (ADR-003).",
+            InNamespace(SharedKernel),
+            TargetMatches(new Regex(Features))),
+        // CQRS: a command changes state, a query only reads it, and neither calls the other.
+        new("Queries reference no commands",
+            "A query only reads; it does not use a command (ADR-003).",
+            InNamespace(QueriesOfSlice),
+            TargetMatches(CommandsOfSlice)),
+        new("Commands reference no queries",
+            "A command does not read through a query; its handler works on the domain (ADR-003).",
+            InNamespace(CommandsOfSlice),
+            TargetMatches(QueriesOfSlice)),
+        new("Queries never write",
+            "A query handler does not call SaveChanges, ExecuteUpdate or ExecuteDelete (ADR-003).",
+            InNamespace(QueriesOfSlice),
+            type => type.Members
+                .SelectMany(member => member.GetMethodCallDependencies())
+                .Select(dependency => dependency.TargetMember)
+                .Where(member => Write.IsMatch(member.Name))
+                .Select(member => member.FullName)
+                .FirstOrDefault()),
         // One rule per forbidden edge, so that dropping one of them fails a named test.
         new("A connector references no other connector",
             "No connector-specific code outside its adapter (plan §10 rule 5).",
-            Connectors,
-            (type, target) => InOtherAssembly(type, target, Connectors)),
+            InAssembly(Connectors),
+            OtherAssembly(Connectors)),
         new("A connector references no Agents",
             "No connector-specific code outside its adapter (plan §10 rule 5).",
-            Connectors,
-            (type, target) => InOtherAssembly(type, target, Agents)),
+            InAssembly(Connectors),
+            OtherAssembly(Agents)),
         new("A connector references no Providers",
             "No connector-specific code outside its adapter (plan §10 rule 5).",
-            Connectors,
-            (type, target) => InOtherAssembly(type, target, Providers)),
+            InAssembly(Connectors),
+            OtherAssembly(Providers)),
         new("Agents references no connector",
             "Harness and connector stay separate (plan §2 principle 1).",
-            Agents,
-            (type, target) => InOtherAssembly(type, target, Connectors)),
+            InAssembly(Agents),
+            OtherAssembly(Connectors)),
         new("Providers references no connector",
             "Model providers know no connectors.",
-            Providers,
-            (type, target) => InOtherAssembly(type, target, Connectors)),
+            InAssembly(Providers),
+            OtherAssembly(Connectors)),
         new("Providers references no Agents",
             "Model providers know no harnesses (plan §2 principle 1).",
-            Providers,
-            (type, target) => InOtherAssembly(type, target, Agents)),
+            InAssembly(Providers),
+            OtherAssembly(Agents)),
     ];
 
     /// <summary>
     /// Every assembly under src/ must match one of these, so a project named outside the scheme fails a test
     /// instead of silently escaping every rule.
     /// </summary>
-    public static IReadOnlyList<Regex> CoveredAssemblyPatterns { get; } = [Domain, Persistence, Api, Connectors, Agents, Providers];
+    public static IReadOnlyList<Regex> CoveredAssemblyPatterns { get; } = [Api, Connectors, Agents, Providers];
 
-    private static bool InOtherAssembly(IType from, IType to, Regex assemblyPattern) =>
-        to.Assembly.FullName != from.Assembly.FullName && assemblyPattern.IsMatch(to.Assembly.Name);
+    private static Func<IType, bool> InAssembly(Regex pattern) => type => pattern.IsMatch(type.Assembly.Name);
+
+    private static Func<IType, bool> InNamespace(Regex pattern) => type => pattern.IsMatch(type.Namespace.FullName);
+
+    private static Func<IType, string?> TargetMatches(Regex pattern) =>
+        type => type.Dependencies
+            .Select(dependency => dependency.Target.FullName)
+            .FirstOrDefault(name => pattern.IsMatch(name));
+
+    private static Func<IType, string?> OtherAssembly(Regex assemblyPattern) =>
+        type => type.Dependencies
+            .Select(dependency => dependency.Target)
+            .FirstOrDefault(target => target.Assembly.FullName != type.Assembly.FullName && assemblyPattern.IsMatch(target.Assembly.Name))
+            ?.FullName;
+
+    private static string? SliceOf(IType type)
+    {
+        var match = Slice.Match(type.Namespace.FullName);
+        return match.Success ? match.Groups["slice"].Value : null;
+    }
 }

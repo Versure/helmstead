@@ -5,15 +5,13 @@ public sealed class AssemblyDiscoveryTests
     private static readonly string[] Output =
     [
         "Helmstead.Core.Api",
-        "Helmstead.Core.Domain",
-        "Helmstead.Core.Persistence",
         "Helmstead.Connectors.GitLab",
         "Helmstead.Agents",
         "Helmstead.Providers",
         "Helmstead.Memory",
         "Helmstead.Core.Tests",
         "Helmstead.Connectors.FixtureA",
-        "Helmstead.Core.Domain.Fixture",
+        "Helmstead.Web.Fixture",
         "Microsoft.AspNetCore.Mvc.Testing",
         "xunit.core",
         "ArchUnitNET",
@@ -29,8 +27,6 @@ public sealed class AssemblyDiscoveryTests
                 "Helmstead.Agents",
                 "Helmstead.Connectors.GitLab",
                 "Helmstead.Core.Api",
-                "Helmstead.Core.Domain",
-                "Helmstead.Core.Persistence",
                 "Helmstead.Memory",
                 "Helmstead.Providers",
             ],
@@ -51,7 +47,7 @@ public sealed class AssemblyDiscoveryTests
     {
         var fixtures = AssemblyDiscovery.FixtureAssemblyNames(Output);
 
-        Assert.Equal(["Helmstead.Connectors.FixtureA", "Helmstead.Core.Domain.Fixture"], fixtures.Order(StringComparer.Ordinal));
+        Assert.Equal(["Helmstead.Connectors.FixtureA", "Helmstead.Web.Fixture"], fixtures.Order(StringComparer.Ordinal));
     }
 
     [Fact]

@@ -15,9 +15,4 @@
     </PackageReference>
   </ItemGroup>
 
-  <ItemGroup>
-    <ProjectReference Include="..\Helmstead.Core.Domain\Helmstead.Core.Domain.csproj" />
-    <ProjectReference Include="..\Helmstead.Core.Persistence\Helmstead.Core.Persistence.csproj" />
-  </ItemGroup>
-
 </Project>
