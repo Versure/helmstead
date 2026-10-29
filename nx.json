@@ -19,6 +19,20 @@
     "@nx/angular:unit-test": {
       "cache": true,
       "inputs": ["default", "^default"]
+    },
+    "lint": {
+      "inputs": [
+        "default",
+        "^default",
+        "{workspaceRoot}/eslint.config.mjs",
+        "{workspaceRoot}/tools/eslint/**/*",
+        "{workspaceRoot}/tools/workspace/frontend-tags.mjs",
+        "{workspaceRoot}/sheriff.config.ts",
+        "{workspaceRoot}/tsconfig.base.json",
+        {
+          "externalDependencies": ["eslint"]
+        }
+      ]
     }
   },
   "plugins": [
