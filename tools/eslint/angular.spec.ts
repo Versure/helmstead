@@ -298,3 +298,30 @@ describe('switching template rules off', () => {
     ).toHaveLength(1);
   });
 });
+
+// The owner's naming convention (PR #3 review): the file name says what it holds.
+describe('Angular file names', () => {
+  it.each([
+    [
+      'a component in a file without .component',
+      'libs/web/system/ui/src/lib/badge.ts',
+    ],
+    ['a component in apps/web without .component', 'apps/web/src/app/home.ts'],
+  ])('fails for %s', async (_what, file) => {
+    const messages = await lintFixture(
+      file,
+      "import { Component } from '@angular/core';\n\n@Component({ selector: 'hs-x', template: '' })\nexport class XComponent {}\n",
+    );
+
+    expect(errorsOf(messages, 'helmstead/angular-file-names')).toHaveLength(1);
+  });
+
+  it('accepts a component in <name>/<name>.component.ts', async () => {
+    const messages = await lintFixture(
+      'libs/web/system/ui/src/lib/status-badge/status-badge.component.ts',
+      "import { Component } from '@angular/core';\n\n@Component({ selector: 'hs-status-badge', templateUrl: './status-badge.component.html' })\nexport class StatusBadgeComponent {}\n",
+    );
+
+    expect(errorsOf(messages, 'helmstead/angular-file-names')).toEqual([]);
+  });
+});

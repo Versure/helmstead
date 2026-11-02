@@ -5,7 +5,7 @@ import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import baseConfig from '../../eslint.config.mjs';
 import angularBestPractices from './eslint.angular.config.mjs';
-import helmstead from './rules/contract-types.mjs';
+import helmstead from './rules/index.mjs';
 
 const repoRoot = path.resolve(import.meta.dirname, '../..');
 
@@ -56,6 +56,12 @@ const web = [
   {
     files: ['**/*.ts'],
     rules: { 'no-restricted-syntax': restrictedSyntax() },
+  },
+  {
+    // The owner's naming convention: <name>.component|directive|pipe|service.ts (ADR-004).
+    files: ['**/*.ts'],
+    plugins: { helmstead },
+    rules: { 'helmstead/angular-file-names': 'error' },
   },
   {
     // Inside a project: no import past a module's index.ts (sheriff.config.ts). Nx owns the rules between projects,
@@ -187,17 +193,17 @@ const byType = {
     {
       // The app is bootstrap, config, root routes and the root component. Everything else lives in a lib.
       files: ['src/**/*.ts'],
-      ignores: ['src/app/app.ts', 'src/**/*.spec.ts'],
+      ignores: ['src/app/app.component.ts', 'src/**/*.spec.ts'],
       rules: {
         'no-restricted-syntax': restrictedSyntax({
           selector: 'ClassDeclaration',
           message:
-            'apps/web declares only the root component (src/app/app.ts). Put components and services in a lib under libs/web/<domain>/<type> (ADR-004).',
+            'apps/web declares only the root component (src/app/app.component.ts). Put components and services in a lib under libs/web/<domain>/<type> (ADR-004).',
         }),
       },
     },
     {
-      files: ['src/app/app.ts'],
+      files: ['src/app/app.component.ts'],
       rules: {
         'no-restricted-syntax': restrictedSyntax(
           {
@@ -207,9 +213,9 @@ const byType = {
               'apps/web declares only the root component. Put services, directives and pipes in a lib (ADR-004).',
           },
           {
-            selector: 'ClassDeclaration:not([id.name="App"])',
+            selector: 'ClassDeclaration:not([id.name="AppComponent"])',
             message:
-              'apps/web/src/app/app.ts declares only the root component, App (ADR-004).',
+              'apps/web/src/app/app.component.ts declares only the root component, AppComponent (ADR-004).',
           },
         ),
       },

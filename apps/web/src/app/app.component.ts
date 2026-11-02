@@ -5,8 +5,8 @@ import { SystemStatusComponent } from '@helmstead/system-feature';
 @Component({
   imports: [RouterOutlet, SystemStatusComponent],
   selector: 'hs-root',
-  templateUrl: './app.html',
-  styleUrl: './app.css',
+  templateUrl: './app.component.html',
+  styleUrl: './app.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
-export class App {}
+export class AppComponent {}

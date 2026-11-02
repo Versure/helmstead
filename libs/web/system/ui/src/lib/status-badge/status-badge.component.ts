@@ -15,8 +15,8 @@ type Tone = 'warn' | 'info' | 'danger';
  */
 @Component({
   selector: 'hs-status-badge',
-  templateUrl: './status-badge.html',
-  styleUrl: './status-badge.css',
+  templateUrl: './status-badge.component.html',
+  styleUrl: './status-badge.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class StatusBadgeComponent {

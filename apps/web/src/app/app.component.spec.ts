@@ -6,10 +6,10 @@ import {
 } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { SystemStatusService } from '@helmstead/system-data-access';
-import { App } from './app';
+import { AppComponent } from './app.component';
 import { appConfig } from './app.config';
 
-describe('App', () => {
+describe('AppComponent', () => {
   it('provides zoneless change detection in the app config', () => {
     // provideZonelessChangeDetection() returns environment providers; it is in the config when its providers are.
     const flatten = (providers: readonly unknown[]): unknown[] =>
@@ -46,7 +46,7 @@ describe('App', () => {
         },
       ],
     });
-    const fixture = TestBed.createComponent(App);
+    const fixture = TestBed.createComponent(AppComponent);
     await fixture.whenStable();
 
     const badge = hostOf(fixture).querySelector('hs-system-status .pill');

@@ -253,13 +253,13 @@ describe('apps/web is a thin shell', () => {
     },
     {
       what: 'a service next to the root component',
-      file: 'apps/web/src/app/app.ts',
+      file: 'apps/web/src/app/app.component.ts',
       code: "import { Injectable } from '@angular/core';\n\n@Injectable({ providedIn: 'root' })\nexport class Clock {}\n",
     },
     {
       what: 'a second component next to the root component',
-      file: 'apps/web/src/app/app.ts',
-      code: "import { Component } from '@angular/core';\n\n@Component({ selector: 'hs-root', template: '' })\nexport class App {}\n\n@Component({ selector: 'hs-other', template: '' })\nexport class Other {}\n",
+      file: 'apps/web/src/app/app.component.ts',
+      code: "import { Component } from '@angular/core';\n\n@Component({ selector: 'hs-root', template: '' })\nexport class AppComponent {}\n\n@Component({ selector: 'hs-other', template: '' })\nexport class Other {}\n",
     },
   ])('fails lint for $what', async ({ file, code }) => {
     const messages = await lintFixture(file, code);
@@ -269,8 +269,8 @@ describe('apps/web is a thin shell', () => {
 
   it('accepts the root component', async () => {
     const messages = await lintFixture(
-      'apps/web/src/app/app.ts',
-      "import { ChangeDetectionStrategy, Component } from '@angular/core';\n\n@Component({ selector: 'hs-root', template: '', changeDetection: ChangeDetectionStrategy.OnPush })\nexport class App {}\n",
+      'apps/web/src/app/app.component.ts',
+      "import { ChangeDetectionStrategy, Component } from '@angular/core';\n\n@Component({ selector: 'hs-root', template: '', changeDetection: ChangeDetectionStrategy.OnPush })\nexport class AppComponent {}\n",
     );
 
     expect(errorsOf(messages, RESTRICTED)).toEqual([]);

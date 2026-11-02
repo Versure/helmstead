@@ -183,8 +183,3 @@ export const contractTypes = ESLintUtils.RuleCreator(
     };
   },
 });
-
-export default {
-  meta: { name: 'helmstead' },
-  rules: { 'contract-types': contractTypes },
-};

@@ -62,8 +62,8 @@ Notes on the table:
   `tools/workspace/frontend-tags.mjs`, and the tag check fails a project whose domain is not in that list, so a new
   domain cannot exist without its rule.
 - A `type:api` lib's `src/index.ts` contains only `export … from` statements (`no-restricted-syntax`).
-- `apps/web` declares one class, the root component in `src/app/app.ts`. Any other class, and any service, directive
-  or pipe in `app.ts`, fails lint. Bootstrap, app config and root routes (`loadChildren`/`loadComponent` into feature
+- `apps/web` declares one class, the root component in `src/app/app.component.ts`. Any other class, and any service, directive
+  or pipe in `app.component.ts`, fails lint. Bootstrap, app config and root routes (`loadChildren`/`loadComponent` into feature
   libs) are all the app holds.
 
 The edges are tested in `tools/eslint/boundaries.spec.ts` with one fixture per allowed edge (no error) and one per
@@ -124,6 +124,21 @@ fixtures: `tools/eslint/angular.spec.ts`.
 
 `@angular-eslint/template/no-call-expression` is off: it reports every signal read in a template, and signals are the
 rule here.
+
+### File names and folders
+
+The owner's convention (PR #3): a file name says what the file holds, and every component has a folder of its own.
+
+- A `@Component` lives in `<name>.component.ts` with a class named `…Component`, its template and styles in
+  `<name>.component.html` and `<name>.component.css` and its test in `<name>.component.spec.ts`. The same goes for
+  `<name>.directive.ts` (`…Directive`), `<name>.pipe.ts` (`…Pipe`) and `<name>.service.ts` (`…Service`, for every
+  `@Injectable`).
+- Components, directives and pipes each sit in a folder named after them: `lib/status-badge/status-badge.component.ts`,
+  so a lib with many of them stays organised. The root component, `apps/web/src/app/app.component.ts`, already fits.
+  Services may share a folder.
+- `helmstead/angular-file-names` (`tools/eslint/rules/angular-file-names.mjs`) enforces this; `nx.json` sets the
+  component, directive, pipe and service generators to produce it. Spec files may declare test host components
+  inline.
 
 ### State
 

@@ -26,6 +26,7 @@ The build plan is `docs/plan.md`; §10 holds the working rules for agents. Decis
 - Rules and reasons: `docs/adr/004-frontend-architecture.md`. Lint, Stylelint and the guard-rail tests enforce them.
 - A feature goes in a lib under `libs/web/<domain>/<type>` (`feature`, `ui`, `data-access`, `model`, `util`, `api`); `apps/web` holds only bootstrap, config, root routes and the root component. Another domain is reached only through its `api` lib.
 - HTTP only in `data-access`, typed with `@helmstead/api-contracts`. Styles in `.css` files, only with `var(--helm-*)` tokens.
+- Files say what they hold: `<name>.component.ts` (class `…Component`, with `.component.html`/`.css`/`.spec.ts`), `<name>.directive.ts`, `<name>.pipe.ts`, `<name>.service.ts`. Each component, directive and pipe has its own folder: `lib/<name>/<name>.component.ts`. `npx nx g @nx/angular:component libs/web/<domain>/<type>/src/lib/<name>/<name>` produces exactly that.
 - Create a lib with:
   `npx nx g @nx/angular:library --directory=libs/web/<domain>/<type> --name=<domain>-<type> --importPath=@helmstead/<domain>-<type> --tags=scope:web,domain:<domain>,type:<type>`
   then make its `eslint.config.mjs` the one-line `export default webProject(import.meta.dirname)` the other libs use, add `"noUncheckedIndexedAccess": true` to its `tsconfig.json`, add it to the project list in `tools/workspace/scope-tags.spec.ts`, and run `npx nx lint <name> --fix` for its `package.json`. A new domain also goes in `tools/workspace/frontend-tags.mjs`.

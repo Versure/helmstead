@@ -2,7 +2,7 @@ import { signal } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { SystemStatusService } from '@helmstead/system-data-access';
 import type { SystemStatus } from '@helmstead/system-model';
-import { SystemStatusComponent } from './system-status';
+import { SystemStatusComponent } from './system-status.component';
 
 // Spec 002 criterion 16. The service, and with it every HTTP detail, is tested in system-data-access against the
 // recorded /health fixture; here a fake service drives the three states.

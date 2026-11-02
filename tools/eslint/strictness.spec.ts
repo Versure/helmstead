@@ -127,7 +127,7 @@ describe('every frontend project is strict', () => {
       );
     });
 
-    it('makes no-explicit-any and every no-unsafe-* rule an error', async () => {
+    it('makes no-explicit-any, the naming rule and every no-unsafe-* rule an error', async () => {
       const eslint = new ESLint({
         cwd: repoRoot,
         flags: ['v10_config_lookup_from_file'],
@@ -138,6 +138,7 @@ describe('every frontend project is strict', () => {
       const rules = config.rules ?? {};
       const expected = [
         '@typescript-eslint/no-explicit-any',
+        'helmstead/angular-file-names',
         ...UNSAFE_RULES,
         ...(tags.includes('type:data-access')
           ? ['helmstead/contract-types']

@@ -1,6 +1,6 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import type { SystemStatus } from '@helmstead/system-model';
-import { StatusBadgeComponent } from './status-badge';
+import { StatusBadgeComponent } from './status-badge.component';
 
 describe('StatusBadgeComponent', () => {
   const render = async (status: SystemStatus) => {
