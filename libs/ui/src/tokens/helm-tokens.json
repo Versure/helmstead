@@ -1,0 +1,101 @@
+{
+  "name": "Helmstead",
+  "version": 1,
+  "color": {
+    "themes": [
+      { "id": "dark", "name": "Night harbor" },
+      { "id": "light", "name": "Day" }
+    ],
+    "tokens": [
+      { "name": "ground", "value": { "dark": "#0a0f1c", "light": "#f3f5fa" }, "usage": "Page background behind every panel. Ambient glows sit on this layer only." },
+      { "name": "surface", "value": { "dark": "#111a2c", "light": "#ffffff" }, "usage": "Panels, cards, the nav rail. The default home for content." },
+      { "name": "surface-raised", "value": { "dark": "#18233a", "light": "#f8f9fc" }, "usage": "Elements inside a panel that need to lift: rows on hover, input fields, the session card header." },
+      { "name": "surface-sunken", "value": { "dark": "#0c1324", "light": "#e9edf5" }, "usage": "Tracks behind progress bars and rings, code blocks, empty states inside a panel." },
+      { "name": "line", "value": { "dark": "#1f2b45", "light": "#dde3ee" }, "usage": "Hairline borders around panels and between list rows. Decorative only: never the sole separator of controls." },
+      { "name": "line-strong", "value": { "dark": "#5d6c8c", "light": "#7d899f" }, "usage": "Input and secondary-button borders. Holds 3:1 on surface and surface-raised in both themes." },
+      { "name": "ink", "value": { "dark": "#e8edf7", "light": "#0d1426" }, "usage": "Primary text and big numbers on ground, surface and surface-raised." },
+      { "name": "ink-muted", "value": { "dark": "#9aa6bd", "light": "#4a5670" }, "usage": "Secondary text: meta lines, timestamps, labels, axis text. On ground, surface, surface-raised." },
+      { "name": "ink-faint", "value": { "dark": "#8290a9", "light": "#5d6982" }, "usage": "Tertiary text such as placeholder copy and 'Pending' states. Meets 4.5:1 on surface; keep it off surface-raised in dark for long text." },
+      { "name": "signal", "value": { "dark": "#6aa5ff", "light": "#2463d6" }, "usage": "The one accent. Primary buttons, active nav item, links, focus ring, running progress. Text in signal reads on ground, surface and surface-raised." },
+      { "name": "signal-strong", "value": { "dark": "#8dbbff", "light": "#1a4fb3" }, "usage": "Hover and pressed state of signal fills and links." },
+      { "name": "signal-tint", "value": { "dark": "#1b2d52", "light": "#dbe6fb" }, "usage": "Selected rows, the active nav item's fill, the info pill's ground. Text on it: ink or signal." },
+      { "name": "on-signal", "value": { "dark": "#06101f", "light": "#ffffff" }, "usage": "Text and icons on a signal fill." },
+      { "name": "beacon", "value": { "dark": "#ff9d5c", "light": "#b8530c" }, "usage": "Needs-your-attention: permission requests from an agent, proposed memory notes, drift in generated config. Never decoration." },
+      { "name": "beacon-tint", "value": { "dark": "#3a2414", "light": "#fbe6d6" }, "usage": "Ground of beacon pills and the attention banner. Text on it: beacon or ink." },
+      { "name": "on-beacon", "value": { "dark": "#1a0d03", "light": "#ffffff" }, "usage": "Text and icons on a beacon fill." },
+      { "name": "ok", "value": { "dark": "#3fd4c4", "light": "#0b7a71" }, "usage": "Success: pipeline passed, review approved, session finished, memory confirmed. Teal, so it is told apart from danger by more than hue." },
+      { "name": "ok-tint", "value": { "dark": "#0f3433", "light": "#d4f1ee" }, "usage": "Ground of ok pills." },
+      { "name": "warn", "value": { "dark": "#f2c14e", "light": "#8a5d00" }, "usage": "Caution: pipeline pending, rate limit near, RAM budget approaching. Always paired with a word." },
+      { "name": "warn-tint", "value": { "dark": "#352b12", "light": "#f8ecc9" }, "usage": "Ground of warn pills." },
+      { "name": "danger", "value": { "dark": "#ff6b81", "light": "#c4223d" }, "usage": "Failure: pipeline failed, changes requested, session crashed, connector offline. Always paired with a word or icon." },
+      { "name": "danger-tint", "value": { "dark": "#3d1820", "light": "#fadbe0" }, "usage": "Ground of danger pills." },
+      { "name": "glow-signal", "value": { "dark": "rgba(74, 140, 255, 0.20)", "light": "rgba(36, 99, 214, 0.10)" }, "usage": "Ambient radial glow behind the hero panel and live charts. Only on ground or inside a panel's own background, never on text." },
+      { "name": "glow-beacon", "value": { "dark": "rgba(255, 138, 61, 0.16)", "light": "rgba(184, 83, 12, 0.08)" }, "usage": "Ambient warm glow at the page edge when something needs attention. At most one per screen." },
+      { "name": "focus", "value": { "dark": "#8dbbff", "light": "#1a4fb3" }, "usage": "Focus ring: 2px solid, 2px offset. At least 3:1 on every surface in both themes." }
+    ]
+  },
+  "type": {
+    "fonts": [],
+    "families": {
+      "display": "\"Bricolage Grotesque\", \"Hanken Grotesk\", system-ui, sans-serif",
+      "sans": "\"Hanken Grotesk\", system-ui, -apple-system, \"Segoe UI\", sans-serif",
+      "mono": "\"JetBrains Mono\", ui-monospace, \"Cascadia Code\", Consolas, monospace"
+    },
+    "groups": [
+      {
+        "name": "Display",
+        "family": "display",
+        "styles": [
+          { "name": "display-xl", "fontSize": "48px", "lineHeight": "52px", "fontWeight": 600, "letterSpacing": "-0.02em", "sample": "Good evening, Jop", "usage": "The greeting on Home and empty-state headlines. Once per screen." },
+          { "name": "metric", "fontSize": "36px", "lineHeight": "40px", "fontWeight": 500, "letterSpacing": "-0.02em", "sample": "€41.20", "usage": "Big numbers in Metric tiles and inside rings. Use tabular figures." },
+          { "name": "title", "fontSize": "22px", "lineHeight": "28px", "fontWeight": 600, "letterSpacing": "-0.01em", "sample": "Sessions", "usage": "View titles at the top of a page." }
+        ]
+      },
+      {
+        "name": "Text",
+        "family": "sans",
+        "styles": [
+          { "name": "heading", "fontSize": "15px", "lineHeight": "20px", "fontWeight": 600, "sample": "My open merge requests", "usage": "Panel titles and row titles." },
+          { "name": "body", "fontSize": "14px", "lineHeight": "21px", "fontWeight": 400, "sample": "Claude Code wants to run npm test in apps/web.", "usage": "Default running text, descriptions, memory note content." },
+          { "name": "body-sm", "fontSize": "13px", "lineHeight": "18px", "fontWeight": 400, "sample": "Updated 4 min ago · YouTrack", "usage": "Meta lines under a row title, helper text." },
+          { "name": "label", "fontSize": "11px", "lineHeight": "14px", "fontWeight": 600, "letterSpacing": "0.08em", "sample": "THIS WEEK", "usage": "Uppercase eyebrow labels, pill text, column headers. Always uppercase." }
+        ]
+      },
+      {
+        "name": "Code",
+        "family": "mono",
+        "styles": [
+          { "name": "mono", "fontSize": "12.5px", "lineHeight": "18px", "fontWeight": 400, "sample": "claude-sonnet-5-5 · num_ctx 32768", "usage": "Model ids, branch names, MR/issue keys, file paths, token counts, agent output." },
+          { "name": "mono-sm", "fontSize": "11.5px", "lineHeight": "16px", "fontWeight": 500, "sample": "!482", "usage": "Keys inside chips and pills." }
+        ]
+      }
+    ]
+  },
+  "spacing": {
+    "tokens": [
+      { "name": "space-1", "value": "4px", "usage": "Icon-to-text gap inside pills." },
+      { "name": "space-2", "value": "8px", "usage": "Gap between inline controls and chips." },
+      { "name": "space-3", "value": "12px", "usage": "Row padding (vertical), gap between rows in a dense list." },
+      { "name": "space-4", "value": "16px", "usage": "Gap between panels on narrow screens; row padding (horizontal)." },
+      { "name": "space-5", "value": "20px", "usage": "Gap between panels in the dashboard grid." },
+      { "name": "space-6", "value": "24px", "usage": "Panel inner padding." },
+      { "name": "space-8", "value": "32px", "usage": "Page gutter on desktop; space above a view title." },
+      { "name": "space-12", "value": "48px", "usage": "Separation between page sections." }
+    ]
+  },
+  "radius": {
+    "tokens": [
+      { "name": "radius-sm", "value": "6px", "usage": "Chips, keys, small inputs." },
+      { "name": "radius-md", "value": "10px", "usage": "Buttons, inputs, list rows, nav items." },
+      { "name": "radius-lg", "value": "16px", "usage": "Inner cards such as session cards." },
+      { "name": "radius-xl", "value": "22px", "usage": "Panels on the dashboard grid." },
+      { "name": "radius-pill", "value": "999px", "usage": "Status pills, toggles, progress bar ends." }
+    ]
+  },
+  "shadow": {
+    "tokens": [
+      { "name": "shadow-panel", "value": { "dark": "inset 0 1px 0 rgba(255, 255, 255, 0.04), 0 16px 40px rgba(2, 6, 16, 0.45)", "light": "0 1px 2px rgba(13, 20, 38, 0.06), 0 8px 24px rgba(13, 20, 38, 0.06)" }, "usage": "Every dashboard panel. Panels float on ground; nothing inside a panel gets its own shadow." },
+      { "name": "shadow-pop", "value": { "dark": "0 20px 48px rgba(2, 6, 16, 0.6)", "light": "0 12px 32px rgba(13, 20, 38, 0.14)" }, "usage": "Menus, popovers, the permission dialog." }
+    ]
+  }
+}

@@ -19,6 +19,20 @@
     "@nx/angular:unit-test": {
       "cache": true,
       "inputs": ["default", "^default"]
+    },
+    "lint": {
+      "inputs": [
+        "default",
+        "^default",
+        "{workspaceRoot}/eslint.config.mjs",
+        "{workspaceRoot}/tools/eslint/**/*",
+        "{workspaceRoot}/tools/workspace/frontend-tags.mjs",
+        "{workspaceRoot}/sheriff.config.ts",
+        "{workspaceRoot}/tsconfig.base.json",
+        {
+          "externalDependencies": ["eslint"]
+        }
+      ]
     }
   },
   "plugins": [
@@ -42,15 +56,29 @@
     "@nx/angular:application": {
       "e2eTestRunner": "none",
       "linter": "eslint",
-      "style": "scss",
+      "style": "css",
       "unitTestRunner": "vitest-angular"
     },
     "@nx/angular:library": {
       "linter": "eslint",
-      "unitTestRunner": "vitest-angular"
+      "unitTestRunner": "vitest-angular",
+      "style": "css",
+      "buildable": true,
+      "skipModule": true,
+      "prefix": "hs"
     },
     "@nx/angular:component": {
-      "style": "scss"
+      "style": "css",
+      "type": "component"
+    },
+    "@nx/angular:directive": {
+      "type": "directive"
+    },
+    "@nx/angular:pipe": {
+      "typeSeparator": "."
+    },
+    "@schematics/angular:service": {
+      "type": "service"
     }
   }
 }

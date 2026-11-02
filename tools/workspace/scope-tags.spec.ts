@@ -1,6 +1,6 @@
 import { createProjectGraphAsync } from '@nx/devkit';
 import { describe, expect, it } from 'vitest';
-import { checkScopeTags } from './scope-tags';
+import { checkFrontendTags, checkScopeTags } from './scope-tags';
 
 describe('checkScopeTags', () => {
   it('accepts projects that carry exactly one scope tag', () => {
@@ -43,13 +43,132 @@ describe('checkScopeTags', () => {
   });
 });
 
+describe('checkFrontendTags', () => {
+  it('accepts frontend libs with one domain and one type tag, and the app with type:app', () => {
+    const errors = checkFrontendTags([
+      { name: 'web', root: 'apps/web', tags: ['scope:web', 'type:app'] },
+      {
+        name: 'ui',
+        root: 'libs/ui',
+        tags: ['scope:web', 'domain:shared', 'type:ui'],
+      },
+      {
+        name: 'system-feature',
+        root: 'libs/web/system/feature',
+        tags: ['scope:web', 'domain:system', 'type:feature'],
+      },
+      // Not a frontend project: no domain or type tags needed.
+      { name: 'core', root: 'apps/core', tags: ['scope:core'] },
+    ]);
+
+    expect(errors).toEqual([]);
+  });
+
+  it.each([
+    {
+      tags: ['scope:web', 'type:feature'],
+      error:
+        'Frontend project "lib" has no domain: tag; it needs exactly one (domain:<name> or domain:shared).',
+    },
+    {
+      tags: ['scope:web', 'domain:system', 'domain:shared', 'type:ui'],
+      error:
+        'Frontend project "lib" has 2 domain: tags (domain:system, domain:shared); it needs exactly one.',
+    },
+    {
+      tags: ['scope:web', 'domain:billing', 'type:ui'],
+      error:
+        'Frontend project "lib" uses domain "domain:billing", which has no boundary rule; add "billing" to tools/workspace/frontend-tags.mjs.',
+    },
+    {
+      tags: ['scope:web', 'domain:system'],
+      error:
+        'Frontend project "lib" has no type: tag; it needs exactly one of type:feature, type:ui, type:data-access, type:model, type:util, type:api.',
+    },
+    {
+      tags: ['scope:web', 'domain:system', 'type:ui', 'type:model'],
+      error:
+        'Frontend project "lib" has 2 type: tags (type:ui, type:model); it needs exactly one.',
+    },
+    {
+      tags: ['scope:web', 'domain:system', 'type:service'],
+      error:
+        'Frontend project "lib" uses unknown tag "type:service"; known types are type:feature, type:ui, type:data-access, type:model, type:util, type:api.',
+    },
+  ])('fails a lib tagged $tags', ({ tags, error }) => {
+    expect(
+      checkFrontendTags([{ name: 'lib', root: 'libs/web/system/ui', tags }]),
+    ).toEqual([error]);
+  });
+
+  it('fails a scope:web lib outside libs/web/<domain>/<type> and libs/ui', () => {
+    expect(
+      checkFrontendTags([
+        {
+          name: 'stray',
+          root: 'libs/shared-web/stray',
+          tags: ['scope:web', 'domain:shared', 'type:util'],
+        },
+      ]),
+    ).toEqual([
+      'Frontend project "stray" is in libs/shared-web/stray; frontend libs live in libs/web/<domain>/<type> or libs/ui.',
+    ]);
+  });
+
+  it('fails a project with frontend tags that is not scope:web', () => {
+    expect(
+      checkFrontendTags([
+        {
+          name: 'sneaky',
+          root: 'libs/sneaky',
+          tags: ['scope:shared', 'domain:shared', 'type:util'],
+        },
+        {
+          name: 'api-contracts',
+          root: 'libs/api-contracts',
+          tags: ['scope:shared', 'domain:shared', 'type:contracts'],
+        },
+      ]),
+    ).toEqual([
+      'Project "sneaky" carries frontend tags (domain:shared, type:util) but not scope:web; frontend projects are scope:web.',
+    ]);
+  });
+
+  it('fails a lib whose folder does not match its tags', () => {
+    expect(
+      checkFrontendTags([
+        {
+          name: 'system-ui',
+          root: 'libs/web/system/ui',
+          tags: ['scope:web', 'domain:system', 'type:feature'],
+        },
+      ]),
+    ).toEqual([
+      'Frontend project "system-ui" is tagged domain:system, type:feature but lives in libs/web/system/ui; move it to libs/web/system/feature.',
+    ]);
+  });
+
+  it('checks libs/ui like the libs under libs/web', () => {
+    expect(
+      checkFrontendTags([{ name: 'ui', root: 'libs/ui', tags: ['scope:web'] }]),
+    ).toHaveLength(2);
+  });
+
+  it.each([
+    { tags: ['scope:web'] },
+    { tags: ['scope:web', 'type:feature'] },
+    { tags: ['scope:web', 'type:app', 'domain:system'] },
+  ])('fails the app tagged $tags', ({ tags }) => {
+    expect(
+      checkFrontendTags([{ name: 'web', root: 'apps/web', tags }]),
+    ).toEqual(['Frontend app "web" must carry type:app and no domain: tag.']);
+  });
+});
+
 describe('the workspace', () => {
   it('has exactly one scope: tag on every Nx project', async () => {
     const graph = await createProjectGraphAsync();
-    const projects = Object.values(graph.nodes).map((node) => ({
-      name: node.name,
-      tags: node.data.tags ?? [],
-    }));
+    const projects = workspaceProjects(graph);
 
     // Every .NET project is an Nx project (the @nx/dotnet plugin infers them from the .csproj files). A new
     // project has to be added here on purpose, with its scope tag next to it.
@@ -63,10 +182,21 @@ describe('the workspace', () => {
       'api-contracts',
       'core',
       'core-tests',
+      'system-api',
+      'system-data-access',
+      'system-feature',
+      'system-model',
+      'system-ui',
       'ui',
       'web',
     ]);
     expect(checkScopeTags(projects)).toEqual([]);
+  });
+
+  it('has one domain: and one type: tag on every frontend project', async () => {
+    const graph = await createProjectGraphAsync();
+
+    expect(checkFrontendTags(workspaceProjects(graph))).toEqual([]);
   });
 
   it('gives each project the scope the spec asks for', async () => {
@@ -81,3 +211,17 @@ describe('the workspace', () => {
     expect(scopeOf('api-contracts')).toEqual(['scope:shared']);
   });
 });
+
+// The lint fixture projects under tools/eslint/fixtures exist only to give the boundary tests something to import.
+// They are not real projects, so the tag checks leave them out (spec 002, "Notes for the build").
+function workspaceProjects(
+  graph: Awaited<ReturnType<typeof createProjectGraphAsync>>,
+) {
+  return Object.values(graph.nodes)
+    .filter((node) => !node.data.root.startsWith('tools/eslint/fixtures/'))
+    .map((node) => ({
+      name: node.name,
+      root: node.data.root,
+      tags: node.data.tags ?? [],
+    }));
+}

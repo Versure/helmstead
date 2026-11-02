@@ -1,0 +1,10 @@
+{
+  "name": "lint-fixture-shared-util",
+  "$schema": "../../../../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "tools/eslint/fixtures/projects/shared-util/src",
+  "projectType": "library",
+  "tags": ["scope:web", "domain:shared", "type:util"],
+  "targets": {
+    "build": { "executor": "nx:noop" }
+  }
+}

@@ -1,0 +1,10 @@
+{
+  "name": "lint-fixture-other-ui",
+  "$schema": "../../../../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "tools/eslint/fixtures/projects/other-ui/src",
+  "projectType": "library",
+  "tags": ["scope:web", "domain:other", "type:ui"],
+  "targets": {
+    "build": { "executor": "nx:noop" }
+  }
+}

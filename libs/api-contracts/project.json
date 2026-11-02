@@ -3,18 +3,27 @@
   "$schema": "../../node_modules/nx/schemas/project-schema.json",
   "sourceRoot": "libs/api-contracts/src",
   "projectType": "library",
-  "tags": ["scope:shared"],
+  "tags": ["scope:shared", "domain:shared", "type:contracts"],
   "implicitDependencies": ["core"],
   "targets": {
     "build": {
-      "executor": "nx:run-commands",
+      "executor": "@nx/js:tsc",
+      "outputs": ["{options.outputPath}"],
       "options": {
-        "command": "tsc -p libs/api-contracts/tsconfig.lib.json --noEmit"
+        "outputPath": "dist/libs/api-contracts",
+        "main": "libs/api-contracts/src/index.ts",
+        "tsConfig": "libs/api-contracts/tsconfig.lib.json",
+        "rootDir": "libs/api-contracts/src"
       }
     },
     "generate": {
       "executor": "nx:run-commands",
-      "dependsOn": [{ "projects": ["core"], "target": "build" }],
+      "dependsOn": [
+        {
+          "projects": ["core"],
+          "target": "build"
+        }
+      ],
       "options": {
         "command": "openapi-typescript libs/api-contracts/openapi.json --output libs/api-contracts/src/generated/api.ts"
       }

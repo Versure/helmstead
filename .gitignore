@@ -17,3 +17,6 @@ TestResults/
 __screenshots__/
 vitest.config.*.timestamp*
 .vitest
+
+# Temporary files of the lint fixture tests (tools/eslint/lint-fixture.ts)
+*.lint-fixture-*

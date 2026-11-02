@@ -76,12 +76,6 @@ export class FixtureService {
       file: 'apps/web/src/app/fixture.html',
       code: '<p *ngIf="ok">yes</p>\n',
     },
-    {
-      practice: 'no function calls in templates',
-      rule: '@angular-eslint/template/no-call-expression',
-      file: 'apps/web/src/app/fixture.html',
-      code: '<p>{{ compute() }}</p>\n',
-    },
   ])('reports $practice', async ({ rule, file, code }) => {
     const messages = await lintFixture(file, code);
 
@@ -121,5 +115,213 @@ export class FixtureComponent {
     expect(messages.filter((m) => m.ruleId?.startsWith('@angular'))).toEqual(
       [],
     );
+  });
+});
+
+// Spec 002 criterion 10: modern Angular only, one fixture per legacy pattern, in a lib of every kind.
+const FEATURE = 'libs/web/system/feature/src/lib/fixture.ts';
+const UI_TEMPLATE = 'libs/web/system/ui/src/lib/fixture.html';
+const onPush = (
+  body: string,
+  imports = '',
+) => `import { ChangeDetectionStrategy, Component${imports} } from '@angular/core';
+
+@Component({
+  selector: 'hs-fixture',
+  template: '',
+  changeDetection: ChangeDetectionStrategy.OnPush,
+})
+export class FixtureComponent {
+${body}}
+`;
+
+describe('only modern Angular passes lint', () => {
+  it.each([
+    {
+      pattern: 'an @NgModule',
+      rule: 'no-restricted-syntax',
+      file: FEATURE,
+      code: "import { NgModule } from '@angular/core';\n\n@NgModule({})\nexport class FixtureModule {}\n",
+    },
+    {
+      pattern: 'a component that is not standalone',
+      rule: '@angular-eslint/prefer-standalone',
+      file: FEATURE,
+      code: onPush('').replace(
+        "template: '',",
+        "template: '',\n  standalone: false,",
+      ),
+    },
+    {
+      // OnPush is Angular 22's default, so a component without changeDetection is OnPush; opting out fails.
+      pattern: 'a component that opts out of OnPush',
+      rule: '@angular-eslint/prefer-on-push-component-change-detection',
+      file: FEATURE,
+      code: onPush('').replace(
+        'ChangeDetectionStrategy.OnPush',
+        'ChangeDetectionStrategy.Eager',
+      ),
+    },
+    {
+      pattern: '@Input() instead of input()',
+      rule: '@angular-eslint/prefer-signals',
+      file: FEATURE,
+      code: onPush("  @Input() name = '';\n", ', Input'),
+    },
+    {
+      pattern: '@Output() instead of output()',
+      rule: '@angular-eslint/prefer-output-emitter-ref',
+      file: FEATURE,
+      code: onPush(
+        '  @Output() readonly changed = new EventEmitter<string>();\n',
+        ', EventEmitter, Output',
+      ),
+    },
+    {
+      pattern: '@ViewChild() instead of viewChild()',
+      rule: '@angular-eslint/prefer-signals',
+      file: FEATURE,
+      code: onPush(
+        "  @ViewChild('ref') ref?: ElementRef;\n",
+        ', ElementRef, ViewChild',
+      ),
+    },
+    {
+      pattern: '@ContentChild() instead of contentChild()',
+      rule: '@angular-eslint/prefer-signals',
+      file: FEATURE,
+      code: onPush(
+        "  @ContentChild('ref') ref?: ElementRef;\n",
+        ', ContentChild, ElementRef',
+      ),
+    },
+    {
+      pattern: 'constructor injection instead of inject()',
+      rule: '@angular-eslint/prefer-inject',
+      file: FEATURE,
+      code: onPush(
+        '  constructor(private readonly element: ElementRef) {}\n',
+        ', ElementRef',
+      ),
+    },
+    {
+      pattern: 'inline component styles (Stylelint cannot check them)',
+      rule: 'no-restricted-syntax',
+      file: FEATURE,
+      code: onPush('').replace(
+        "template: '',",
+        "template: '',\n  styles: ':host { color: red; }',",
+      ),
+    },
+    {
+      pattern: '*ngIf instead of @if',
+      rule: '@angular-eslint/template/prefer-control-flow',
+      file: UI_TEMPLATE,
+      code: '<p *ngIf="ok">yes</p>\n',
+    },
+    {
+      pattern: '*ngFor instead of @for',
+      rule: '@angular-eslint/template/prefer-control-flow',
+      file: UI_TEMPLATE,
+      code: '<p *ngFor="let item of items">{{ item }}</p>\n',
+    },
+    {
+      pattern: '[ngSwitch] instead of @switch',
+      rule: '@angular-eslint/template/prefer-control-flow',
+      file: UI_TEMPLATE,
+      code: '<div [ngSwitch]="kind"><p *ngSwitchCase="\'a\'">a</p></div>\n',
+    },
+    {
+      pattern: 'a non-self-closing empty component tag',
+      rule: '@angular-eslint/template/prefer-self-closing-tags',
+      file: UI_TEMPLATE,
+      code: '<hs-status-badge [status]="status"></hs-status-badge>\n',
+    },
+  ])('fails for $pattern', async ({ rule, file, code }) => {
+    const messages = await lintFixture(file, code);
+
+    expect(errorsOf(messages, rule).length).toBeGreaterThan(0);
+  });
+
+  it('reads signals in templates', async () => {
+    const messages = await lintFixture(
+      UI_TEMPLATE,
+      '@if (status(); as s) {\n  <p>{{ s.label }}</p>\n}\n',
+    );
+
+    expect(messages).toEqual([]);
+  });
+});
+
+// Spec 002 criterion 14: angular-eslint's template accessibility rules.
+describe('template accessibility', () => {
+  it.each([
+    {
+      problem: 'an image without alt',
+      rule: '@angular-eslint/template/alt-text',
+      code: '<img ngSrc="a.png" width="10" height="10" />\n',
+    },
+    {
+      problem: 'a click handler without a key handler',
+      rule: '@angular-eslint/template/click-events-have-key-events',
+      code: '<span (click)="go()">go</span>\n',
+    },
+    {
+      problem: 'a form control without a label',
+      rule: '@angular-eslint/template/label-has-associated-control',
+      code: '<label>Name</label>\n<input type="text" />\n',
+    },
+    {
+      problem: 'an interactive element that cannot take focus',
+      rule: '@angular-eslint/template/interactive-supports-focus',
+      code: '<div role="button" (click)="go()" (keyup.enter)="go()">go</div>\n',
+    },
+  ])('fails for $problem', async ({ rule, code }) => {
+    const messages = await lintFixture(UI_TEMPLATE, code);
+
+    expect(errorsOf(messages, rule).length).toBeGreaterThan(0);
+  });
+});
+
+describe('switching template rules off', () => {
+  it('fails lint for a disable comment in a template', async () => {
+    const messages = await lintFixture(
+      'libs/web/system/ui/src/lib/fixture.html',
+      '<!-- eslint-disable-next-line @angular-eslint/template/no-inline-styles -->\n<p style="color: red">x</p>\n',
+    );
+
+    expect(
+      errorsOf(
+        messages,
+        '@eslint-community/eslint-comments/no-restricted-disable',
+      ),
+    ).toHaveLength(1);
+  });
+});
+
+// The owner's naming convention (PR #3 review): the file name says what it holds.
+describe('Angular file names', () => {
+  it.each([
+    [
+      'a component in a file without .component',
+      'libs/web/system/ui/src/lib/badge.ts',
+    ],
+    ['a component in apps/web without .component', 'apps/web/src/app/home.ts'],
+  ])('fails for %s', async (_what, file) => {
+    const messages = await lintFixture(
+      file,
+      "import { Component } from '@angular/core';\n\n@Component({ selector: 'hs-x', template: '' })\nexport class XComponent {}\n",
+    );
+
+    expect(errorsOf(messages, 'helmstead/angular-file-names')).toHaveLength(1);
+  });
+
+  it('accepts a component in <name>/<name>.component.ts', async () => {
+    const messages = await lintFixture(
+      'libs/web/system/ui/src/lib/status-badge/status-badge.component.ts',
+      "import { Component } from '@angular/core';\n\n@Component({ selector: 'hs-status-badge', templateUrl: './status-badge.component.html' })\nexport class StatusBadgeComponent {}\n",
+    );
+
+    expect(errorsOf(messages, 'helmstead/angular-file-names')).toEqual([]);
   });
 });

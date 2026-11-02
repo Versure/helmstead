@@ -64,7 +64,7 @@ export default [
       '@angular-eslint/template/prefer-at-else': 'error',
       '@angular-eslint/template/prefer-at-empty': 'error',
       '@angular-eslint/template/prefer-built-in-pipes': 'error',
-      '@angular-eslint/template/no-call-expression': 'error',
+      // No template/no-call-expression: it flags every signal read (`status()`), and spec 002 makes signals the rule.
       '@angular-eslint/template/no-negated-async': 'error',
       '@angular-eslint/template/no-inline-styles': 'error',
       '@angular-eslint/template/no-interpolation-in-attributes': 'error',

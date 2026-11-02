@@ -16,3 +16,8 @@ bin/
 obj/
 /libs/api-contracts/openapi.json
 /libs/api-contracts/src/generated
+
+.angular
+# Generated from / copied verbatim from the Helm design system (tools/design/port-helm-tokens.mjs).
+/libs/ui/src/tokens/helm-tokens.css
+/libs/ui/src/tokens/helm-tokens.json

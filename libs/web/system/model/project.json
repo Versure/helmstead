@@ -1,0 +1,25 @@
+{
+  "name": "system-model",
+  "$schema": "../../../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "libs/web/system/model/src",
+  "prefix": "hs",
+  "projectType": "library",
+  "tags": ["scope:web", "domain:system", "type:model"],
+  "targets": {
+    "build": {
+      "executor": "@nx/angular:ng-packagr-lite",
+      "outputs": ["{workspaceRoot}/dist/{projectRoot}"],
+      "defaultConfiguration": "production",
+      "options": {
+        "project": "libs/web/system/model/ng-package.json",
+        "tsConfig": "libs/web/system/model/tsconfig.lib.json"
+      },
+      "configurations": {
+        "production": {
+          "tsConfig": "libs/web/system/model/tsconfig.lib.prod.json"
+        },
+        "development": {}
+      }
+    }
+  }
+}
