@@ -33,16 +33,56 @@ For criteria checked by a screenshot, run the app, capture it, and compare it wi
 
 The Stop hook runs `verify.mjs` whenever you try to finish with code changes on this branch, so a red build sends you back to work.
 
-## 4. Independent review
+## 4. Independent review: find, vote, fix
+
+Reviewers find candidates; independent voters decide which ones are real. Nothing is fixed on one agent's word. `REVIEW.md` says what counts as a finding.
+
+### 4a. Find
 
 1. Write the diff for the reviewers: `mkdir -p .sdlc && git diff origin/main...HEAD > .sdlc/review.diff`.
 2. Classify it: `node scripts/sdlc/classify-risk.mjs --json > .sdlc/risk.json`.
 3. Start the reviewers in parallel, giving each the spec path, `.sdlc/review.diff` and `.sdlc/risk.json`:
    - `spec-reviewer`, always
+   - `bug-hunter`, always
    - `security-reviewer` when the categories include `security` or `pipeline`, or when the change handles input from outside the app, runs processes, or touches files outside the app data directory
    - `architecture-reviewer` for `architecture`, or when the change adds a project, crosses the shell/core/web boundaries, or changes a shared type
    - `data-reviewer` for `data`, or when the change reads or writes stored data
-4. Fix every finding that affects correctness, security or the spec. Ignore style. Re-run verify and, if the fixes were substantial, the reviewers that raised them. Stop after two review rounds; anything still open goes in the PR under "Open findings".
+
+### 4b. Collect
+
+Write every finding into the ledger `.sdlc/findings.md`, one row each: ID (`F1`, `F2`, …), reviewer, severity, origin, `path:line`, the claim. Then:
+
+- Merge duplicates (same lines, same problem) into one row that lists every reviewer that raised it.
+- Drop findings about style, naming, formatting or cleanup, and findings without a `path:line`. Mark them `dropped` in the ledger with the reason; they are not voted on.
+
+### 4c. Vote
+
+For every remaining finding, start three `finding-verifier` agents in parallel, one per lens (`trace`, `refute`, `test`). Start all findings' voters at once. Give each voter only the finding's ID and line, its lens, the spec path, `.sdlc/review.diff` and `REVIEW.md`: not the reviewer's full report, not your opinion and not the other votes.
+
+Tally each finding:
+
+| Votes | Verdict |
+|---|---|
+| two or three `real` | **confirmed** |
+| two or three `not-real` | **rejected** |
+| anything else | **disputed** |
+
+Severity and origin are what the majority of voters said, not what the reviewer said; on a three-way split, take the most severe and `new`. A finding from `security-reviewer` that is `blocker` or `major` is rejected only when no voter said `real`; otherwise it is at least disputed. Record the votes, the verdict and the voters' evidence in the ledger.
+
+### 4d. Fix
+
+- **Confirmed and `new`**: fix it, most severe first. Each confirmed finding names a kind of mistake: search the diff for the same mistake elsewhere and fix every instance, not only the line reported. Add or tighten the test that would have caught it.
+- **Confirmed and `pre-existing`**: do not fix it in this branch unless the spec covers that code. It goes in the PR under "Pre-existing".
+- **Disputed**: do not fix it. It goes in the PR under "Open findings" with the votes. A disputed `security-reviewer` finding also goes in Owner review focus and raises `security`.
+- **Rejected** and **dropped**: nothing; they stay in the ledger so no later round raises them again.
+
+Re-run `node scripts/sdlc/verify.mjs` after the fixes and commit them.
+
+### 4e. Second round, on the fixes only
+
+Run a second round only if you fixed a `blocker` or `major` finding, or the fixes changed more than about 50 lines. Write only the fix commits to `.sdlc/review.diff` (`git diff <head before the fixes>..HEAD`), and give the reviewers that raised confirmed findings that diff plus the ledger. Collect, vote and fix their new findings the same way.
+
+Stop after two rounds. Anything still open goes in the PR. If the second round confirms a new `blocker`, the approach may be wrong rather than the lines: say so under "Open findings" instead of patching again.
 
 ## 5. Decide the risk
 
@@ -55,7 +95,8 @@ Write `.sdlc/pr-body.md` following `.github/pull_request_template.md`:
 - **Owner review focus** (high risk only): collect the reviewers' focus items, merge duplicates and keep the list short (aim for five or fewer). Each item is a `path:start-end` link to the exact lines, why it is risky, and one concrete question the owner can answer by reading those lines. Point at the lines where the risky decision is made, not at whole files. For low risk, write "None — low risk".
 - **Safe to skim**: every other changed file, one line each on what changed.
 - Add `<!-- risk:raise <category> -->` for each category you or the reviewers raised that the path classifier missed.
-- Add `<!-- ai-review: pass -->` only if no correctness or security finding is open.
+- **AI review**: start with the counts (`N found · N confirmed and fixed · N pre-existing · N disputed · N rejected`), then the verdict per reviewer. List each pre-existing and disputed finding with its `path:line`, the claim and the votes (e.g. `2 real, 1 unsure`). Leave rejected and dropped findings out; say "nothing to fix" plainly when that is the result.
+- Add `<!-- ai-review: pass -->` only if no confirmed `new` finding is open and no `security-reviewer` finding is disputed. Pre-existing and other disputed findings do not hold it back; they are listed for the owner.
 - Paste the verify command with the tail of its output as evidence, and attach screenshots if the spec asked for them.
 
 Set the spec's `status: built` in the same branch and commit it.

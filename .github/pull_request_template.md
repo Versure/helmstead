@@ -27,12 +27,16 @@ $ node scripts/sdlc/verify.mjs
 ```
 
 ## AI review
-<!-- Verdict per reviewer, and any finding left open. -->
+<!-- Counts first, then the verdict per reviewer. Findings are voted on by three verifiers each; list pre-existing and disputed ones with their votes. -->
+0 found · 0 confirmed and fixed · 0 pre-existing · 0 disputed · 0 rejected
+
 - spec-reviewer: pass
+- bug-hunter: pass
+- Pre-existing: none
 - Open findings: none
 
 <!--
 Markers for the risk gate, added by /build as separate HTML comments at the end:
   risk:raise <category>   one per category the path rules missed (security, architecture, data, pipeline)
-  ai-review: pass         only when no correctness or security finding is open
+  ai-review: pass         only when no confirmed new finding is open and no security finding is disputed
 -->

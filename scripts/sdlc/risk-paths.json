@@ -64,6 +64,7 @@
         ".claude/**",
         "scripts/sdlc/**",
         "CLAUDE.md",
+        "REVIEW.md",
         "AGENTS.md",
         "docs/sdlc.md",
         "**/package.json",

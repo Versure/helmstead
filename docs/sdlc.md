@@ -21,7 +21,14 @@ Start the build in a fresh session so it begins with a clean context and only th
 claude -w NNN-slug "/build NNN"
 ```
 
-The build writes a failing test per acceptance criterion, implements until it passes, runs `node scripts/sdlc/verify.mjs`, and then hands the diff to read-only reviewers that never saw it being written (`.claude/agents/`): `spec-reviewer` always, plus `security-reviewer`, `architecture-reviewer` and `data-reviewer` when their area is touched. It fixes what they confirm (correctness, not style), opens the PR and stops.
+The build writes a failing test per acceptance criterion, implements until it passes, runs `node scripts/sdlc/verify.mjs`, and then reviews the diff with read-only agents that never saw it being written (`.claude/agents/`):
+
+1. **Find.** `spec-reviewer` and `bug-hunter` always, plus `security-reviewer`, `architecture-reviewer` and `data-reviewer` when their area is touched, in parallel. Each finding needs a `path:line` and the evidence for it; `REVIEW.md` says what counts.
+2. **Vote.** Duplicates are merged and style findings dropped. Every other finding goes to three `finding-verifier` agents, each checking it from a different angle (trace the path, look for what prevents it, describe the failing test). Two `real` votes confirm it, two `not-real` reject it, anything else leaves it disputed. A security finding is rejected only when no voter calls it real.
+3. **Fix.** Only confirmed findings the change introduced are fixed, together with every other instance of the same mistake. Pre-existing bugs and disputed findings are listed in the PR, not fixed.
+4. **Second round, if needed.** Only after substantial fixes, and only on the fix commits, with the ledger of decided findings so nothing is raised twice. Two rounds at most.
+
+Then it opens the PR and stops. Three voters per finding make the review cost more agents on large changes, and it keeps unfounded findings from costing a fix round or reaching the owner.
 
 ## 3. Risk
 
@@ -32,7 +39,7 @@ A change is **high risk** when it touches one of these areas. The exact paths ar
 | Security & permissions | Tauri shell and capabilities, sidecar session token, agent runtime and tool permissions, MCP, secrets and keychain, anything handling untrusted input |
 | Architecture & contracts | Domain model, API contracts, ACP/IPC/sidecar boundaries, new projects, ADRs and the plan |
 | Data & storage | Migrations, persistence, SQL, retention, anything that deletes or reshapes stored data |
-| Dependencies & pipeline | Packages and lock files, CI workflows, `.claude/`, `scripts/sdlc/`, `CLAUDE.md`, this file |
+| Dependencies & pipeline | Packages and lock files, CI workflows, `.claude/`, `scripts/sdlc/`, `CLAUDE.md`, `REVIEW.md`, this file |
 | Size | More than 1000 changed lines (lock files and docs excluded) |
 
 Three things can make a change high risk, and nothing can make it low risk again:
