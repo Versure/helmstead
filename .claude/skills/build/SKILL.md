@@ -13,7 +13,8 @@ You work alone from here. The owner is not watching and only sees the pull reque
 
 - Find `docs/specs/NNN-*.md` for the number given. It must have `status: approved`; if not, stop and tell the owner to run `/spec` first.
 - Work on the branch in its `branch:` field. If it exists on the remote, check it out; otherwise create it from `origin/main`. Run `git fetch origin` and rebase onto `origin/main` if it moved.
-- If the arguments ask you to address PR comments, read them first: `gh pr view --comments` and `gh api repos/{owner}/{repo}/pulls/<n>/comments`. Each comment is a requirement for this round.
+- If a PR for this branch already exists, this is a follow-up round. Read its description: the `<!-- ai-review-head: <sha> -->` marker is the last commit the review covered, and the "Findings ledger" block lists every finding already decided. Restore that block to `.sdlc/findings.md`; in step 4 you review only `git diff <sha>..HEAD` and never raise a ledger finding again. If you rebased and that commit is no longer an ancestor (`git merge-base --is-ancestor <sha> HEAD` fails), review the whole branch diff instead, still with the ledger.
+- If the arguments ask you to address PR comments, read them first: `gh pr view --comments` and `gh api repos/{owner}/{repo}/pulls/<n>/comments`. Each comment is a requirement for this round, and each gets an answer (step 6).
 - Read the spec, the files under "Notes for the build", and the code you will change.
 
 ## 2. When the spec doesn't say
@@ -39,7 +40,7 @@ Reviewers find candidates; independent voters decide which ones are real. Nothin
 
 ### 4a. Find
 
-1. Write the diff for the reviewers: `mkdir -p .sdlc && git diff origin/main...HEAD > .sdlc/review.diff`.
+1. Write the diff for the reviewers: `mkdir -p .sdlc && git diff origin/main...HEAD > .sdlc/review.diff`. In a follow-up round, write only what changed since the last review instead (`git diff <ai-review-head>..HEAD`), and give every reviewer the ledger.
 2. Classify it: `node scripts/sdlc/classify-risk.mjs --json > .sdlc/risk.json`.
 3. Start the reviewers in parallel, giving each the spec path, `.sdlc/review.diff` and `.sdlc/risk.json`:
    - `spec-reviewer`, always
@@ -96,6 +97,9 @@ Write `.sdlc/pr-body.md` following `.github/pull_request_template.md`:
 - **Safe to skim**: every other changed file, one line each on what changed.
 - Add `<!-- risk:raise <category> -->` for each category you or the reviewers raised that the path classifier missed.
 - **AI review**: start with the counts (`N found · N confirmed and fixed · N pre-existing · N disputed · N rejected`), then the verdict per reviewer. List each pre-existing and disputed finding with its `path:line`, the claim and the votes (e.g. `2 real, 1 unsure`). Leave rejected and dropped findings out; say "nothing to fix" plainly when that is the result.
+- **Findings ledger**: paste `.sdlc/findings.md` inside a collapsed `<details><summary>Findings ledger</summary>` block, so a later round knows what was decided. Add `<!-- ai-review-head: <sha> -->` with the commit the review covered.
+- **How to revert**: what reverting the squash commit undoes, and anything it does not (a migration that already ran, a generated config, stored data in a new shape). "Revert the commit" is enough when that is all.
+- **Escaped bug** (fix specs only): what the review did not have in front of it, and the check you added so it is caught next time: a test, a lint rule, or a line in `REVIEW.md` or `CLAUDE.md`. Add that check in this branch.
 - Add `<!-- ai-review: pass -->` only if no confirmed `new` finding is open and no `security-reviewer` finding is disputed. Pre-existing and other disputed findings do not hold it back; they are listed for the owner.
 - Paste the verify command with the tail of its output as evidence, and attach screenshots if the spec asked for them.
 
@@ -107,6 +111,8 @@ Push the branch and open the PR (or update its description if it exists):
 git push -u origin HEAD
 gh pr create --base main --title "<type>(<scope>): <spec title>" --body-file .sdlc/pr-body.md
 ```
+
+In a follow-up round, answer every PR comment in its own thread: what you changed and the commit, or why you did not change it. Resolve the threads you fixed; leave the ones you disagree with open for the owner. Branch protection requires every thread to be resolved before the merge.
 
 ## 7. Report
 

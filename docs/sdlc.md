@@ -55,7 +55,7 @@ Three things can make a change high risk, and nothing can make it low risk again
 **High risk.** The PR description opens with **Owner review focus**: a short list of `file:lines` ranges, each with why it is risky and the one question to answer. Everything else is under **Safe to skim**. The owner reviews those ranges, then:
 
 - adds the `human-approved` label to approve (the gate goes green and auto-merge takes over), or
-- comments on the PR and runs `/build NNN` again, telling it to address the comments.
+- comments on the PR and runs `/build NNN` again, telling it to address the comments. That round reviews only the commits since the last review, skips findings already decided (the ledger in the PR description), and answers every comment in its thread: fixed and resolved, or why not and left open. A PR merges only when every thread is resolved.
 
 A new commit removes `human-approved`, so an approval always covers the code that actually merges.
 
@@ -66,7 +66,7 @@ A new commit removes `human-approved`, so an approval always covers the code tha
 | Claude never merges, approves, pushes to `main`, force-pushes or changes branch protection | PreToolUse hook `scripts/sdlc/hooks/guard-shell.mjs` |
 | A change in `apps/` or `libs/` is not done until lint, test and build pass | Stop hook `scripts/sdlc/verify.mjs --hook`, and the `ci` check |
 | High-risk changes wait for the owner | `risk-gate` status (`.github/workflows/risk-gate.yml`) plus branch protection on `main` |
-| Nothing reaches `main` without a PR and green checks, admins included | Branch protection, set up by `scripts/sdlc/setup-github.sh` |
+| Nothing reaches `main` without a PR, green checks and every review thread resolved, admins included | Branch protection, set up by `scripts/sdlc/setup-github.sh` |
 
 Claude opens PRs with the owner's GitHub account, and GitHub does not let anyone approve their own PR. That is why approval is a label, not a GitHub review. To make approval a real review, give Claude its own GitHub account and require code-owner review for the high-risk paths.
 

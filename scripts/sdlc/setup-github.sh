@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # One-time GitHub setup for the SDLC in docs/sdlc.md: squash-only auto-merge, the labels
-# the risk gate uses, and branch protection on main (PR + green `ci` and `risk-gate`,
-# admins included, no force pushes). Run by the owner after main exists on GitHub.
+# the risk gate uses, and branch protection on main (PR + green `ci` and `risk-gate`, every
+# review thread resolved, admins included, no force pushes). Run by the owner after main exists on GitHub.
 set -euo pipefail
 
 repo="${1:-$(gh repo view --json nameWithOwner -q .nameWithOwner)}"
@@ -25,6 +25,7 @@ gh api -X PUT "repos/$repo/branches/main/protection" --input - <<'JSON'
   "required_pull_request_reviews": { "required_approving_review_count": 0 },
   "restrictions": null,
   "required_linear_history": true,
+  "required_conversation_resolution": true,
   "allow_force_pushes": false,
   "allow_deletions": false
 }

@@ -15,6 +15,11 @@ Read by every reviewer and voter in `/build` (`.claude/agents/`). It says what a
 | Docs, specs, ADRs | it lies: it says the code does something it does not |
 | Config, CI, `.claude/`, `scripts/sdlc/` | it misroutes: a check, hook or gate silently stops applying |
 
+Two more, in any area:
+
+- The change breaks a rule in `CLAUDE.md`, an ADR or `docs/plan.md` §10 that lint does not enforce.
+- The change makes `CLAUDE.md`, `REVIEW.md`, an ADR or a doc say something that is no longer true. Stale instructions mislead every later build.
+
 ## Every finding
 
 - Points at `path:line` and names the evidence: the caller, input, test or config line that shows it. A guess from a name is not a finding.
