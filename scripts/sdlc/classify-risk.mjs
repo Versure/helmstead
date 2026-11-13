@@ -72,7 +72,7 @@ export function classify(files, lines = 0) {
 }
 
 export function title(key) {
-  return config.categories[key]?.title ?? (key === 'size' ? 'Size' : key);
+  return config.categories[key]?.title ?? ({ size: 'Size', review: 'Disputed AI review finding' }[key] ?? key);
 }
 
 function defaultBase() {

@@ -3,7 +3,8 @@
     "deny": [
       "Read(./.env)",
       "Read(./.env.*)",
-      "Read(./**/secrets/**)"
+      "Read(./**/secrets/**)",
+      "mcp__github__resolve_review_thread"
     ]
   },
   "hooks": {

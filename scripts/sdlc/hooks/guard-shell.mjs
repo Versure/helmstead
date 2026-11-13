@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 // PreToolUse hook for Bash and PowerShell. Blocks the few actions that are the owner's alone:
-// merging, approving, landing on main, rewriting history and changing GitHub protection.
+// merging, approving, resolving review threads, landing on main, rewriting history and changing
+// GitHub protection.
 // Exit code 2 blocks the command and sends stderr back to Claude.
 import { execFileSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
@@ -20,6 +21,7 @@ const rules = [
   [/--no-verify\b/, 'Do not skip git hooks.'],
   [/\bgh\s+(repo\s+edit|ruleset)\b/, 'Repository settings are the owner\'s to change.'],
   [/\bgh\s+label\s+(create|edit|delete)\b[^\n]*\b(risk:|needs-owner-review)/, 'Risk labels are set by the risk gate.'],
+  [/\bresolveReviewThread\b/, 'Only the owner resolves review threads. Reply in the thread and leave it open.'],
 ];
 
 for (const [pattern, reason] of rules) {

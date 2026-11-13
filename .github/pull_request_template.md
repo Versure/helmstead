@@ -28,30 +28,32 @@ $ node scripts/sdlc/verify.mjs
 
 ## How to revert
 <!-- What reverting the squash commit undoes, and what it does not (a migration that ran, generated config, data in a new shape). -->
-Revert the commit.
+<!-- e.g. Revert the commit; nothing else to undo. -->
 
 ## Escaped bug
-<!-- Fix specs only; delete otherwise. What the review did not have in front of it, and the test, lint rule or REVIEW.md/CLAUDE.md line added so it is caught next time. -->
+<!-- Fix specs only; delete otherwise. What the review did not have in front of it, and the check that catches it next time: a test added here, or a lint rule or REVIEW.md/CLAUDE.md text proposed for a separate chore/ PR. -->
 
 ## AI review
 <!-- Counts first, then the verdict per reviewer. Findings are voted on by three verifiers each; list pre-existing and disputed ones with their votes. -->
-0 found · 0 confirmed and fixed · 0 pre-existing · 0 disputed · 0 rejected
+<!-- N found · N confirmed and fixed · N pre-existing · N disputed · N rejected · N dropped -->
 
-- spec-reviewer: pass
-- bug-hunter: pass
-- Pre-existing: none
-- Open findings: none
+- spec-reviewer: <!-- pass | changes-needed -->
+- bug-hunter: <!-- pass | changes-needed -->
+- Pre-existing: <!-- path:line — claim — votes, or none -->
+- Open findings: <!-- path:line — claim — votes, or none -->
 
 <details><summary>Findings ledger</summary>
 
-| ID | Reviewer | Severity | Origin | Where | Claim | Votes | Verdict |
-|---|---|---|---|---|---|---|---|
+| ID | Reviewer | Severity | Origin | Security | Where | Claim | Votes | Verdict | Evidence |
+|---|---|---|---|---|---|---|---|---|---|
 
 </details>
 
 <!--
-Markers for the risk gate, added by /build as separate HTML comments at the end:
-  risk:raise <category>   one per category the path rules missed (security, architecture, data, pipeline)
-  ai-review-head <sha>    the last commit the AI review covered; a follow-up round reviews only what came after it
-  ai-review: pass         only when no confirmed new finding is open and no security finding is disputed
+Markers added by /build at the very end, each as its own HTML comment, never inside the ledger:
+  <!- - risk:raise <category> - ->   read by the risk gate; one per category the path rules missed
+                                    (security, architecture, data, pipeline, review)
+  <!- - ai-review-head: <sha> - ->   read by the next /build round: the last commit the AI review covered
+  <!- - ai-review: pass - ->         read by the risk gate; only when no confirmed new finding is open and
+                                    no disputed finding was sent to the owner
 -->

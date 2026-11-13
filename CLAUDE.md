@@ -5,7 +5,7 @@ The build plan is `docs/plan.md`; §10 holds the working rules for agents. Decis
 # How work flows here
 
 - New work starts with `/spec` (an interview that ends in `docs/specs/NNN-slug.md`) and is built with `/build NNN`. The full flow and the risk policy are in `docs/sdlc.md`. What a review counts as a finding is in `REVIEW.md`; every finding is voted on before it is fixed.
-- Never merge a PR and never add the `human-approved` label; `scripts/sdlc/hooks/guard-shell.mjs` blocks it anyway.
+- Never merge a PR, never add the `human-approved` label and never resolve a review thread; `scripts/sdlc/hooks/guard-shell.mjs` blocks them anyway.
 - If a spec leaves open a choice about the domain model, storage, security or a public contract, stop and ask. Other gaps: pick the sensible option and list it under "Decisions I made" in the PR.
 
 # Commands

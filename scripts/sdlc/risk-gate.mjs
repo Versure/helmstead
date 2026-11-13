@@ -11,7 +11,8 @@ import { changedFiles, changedLines, classify, title } from './classify-risk.mjs
 
 const APPROVED = 'human-approved';
 const FORCE_HIGH = 'needs-owner-review';
-const CATEGORIES = ['security', 'architecture', 'data', 'pipeline'];
+// `review` is raised by /build when the AI review's voters split on a serious finding.
+const CATEGORIES = ['security', 'architecture', 'data', 'pipeline', 'review'];
 
 const event = JSON.parse(readFileSync(process.env.GITHUB_EVENT_PATH, 'utf8'));
 const pr = event.pull_request;
@@ -39,7 +40,14 @@ const head = pr.head.sha;
 const result = classify(changedFiles(base, head), changedLines(base, head));
 
 // Raises only: from the PR body (written by the build agent) and from the owner's label.
+// A raise anywhere in the body counts, since it can only make the PR stricter.
 const body = pr.body ?? '';
+// The pass marker counts only outside <details> blocks, code and inline code: the findings ledger
+// and quoted evidence live there, and text quoted from a reviewed file must not pass a PR.
+const markerBody = body
+  .replace(/<details[\s\S]*?<\/details>/gi, '')
+  .replace(/```[\s\S]*?```/g, '')
+  .replace(/`[^`\n]*`/g, '');
 for (const m of body.matchAll(/<!--\s*risk:raise\s+([a-z,\s]+?)\s*-->/gi)) {
   for (const key of m[1].split(/[,\s]+/).filter((k) => CATEGORIES.includes(k))) {
     result.categories[key] ??= ['raised in the PR description'];
@@ -47,7 +55,7 @@ for (const m of body.matchAll(/<!--\s*risk:raise\s+([a-z,\s]+?)\s*-->/gi)) {
 }
 if (labels.has(FORCE_HIGH)) result.categories.owner = [`label \`${FORCE_HIGH}\``];
 const high = Object.keys(result.categories).length > 0;
-const aiReviewed = /<!--\s*ai-review:\s*pass\s*-->/i.test(body);
+const aiReviewed = /<!--\s*ai-review:\s*pass\s*-->/i.test(markerBody);
 const approved = labels.has(APPROVED);
 
 const names = Object.keys(result.categories).map(title).join(', ');
