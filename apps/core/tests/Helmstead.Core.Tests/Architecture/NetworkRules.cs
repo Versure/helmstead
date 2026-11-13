@@ -24,6 +24,10 @@ public static class NetworkRules
         "System.Net.Sockets.UdpClient",
         "System.Net.WebProxy",
         "System.Net.IWebProxy",
+        "System.Net.Dns",
+        "System.Net.Mail.SmtpClient",
+        "System.Net.NetworkInformation.Ping",
+        "System.Net.Quic.QuicConnection",
     ];
 
     /// <summary>Members that take a handler, or every client, out of the guard's proxy.</summary>
@@ -35,6 +39,9 @@ public static class NetworkRules
         "System.Net.Http.SocketsHttpHandler.set_Proxy",
         "System.Net.Http.SocketsHttpHandler.set_ConnectCallback",
         "System.Net.Http.HttpClient.set_DefaultProxy",
+        "System.Net.WebSockets.ClientWebSocketOptions.set_Proxy",
+        "System.Net.WebRequest.set_DefaultWebProxy",
+        "System.Net.WebRequest.set_Proxy",
     ];
 
     public static LayerRule Rule { get; } = new(

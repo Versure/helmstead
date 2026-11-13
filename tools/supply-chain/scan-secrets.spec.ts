@@ -47,8 +47,7 @@ describe('planScan: what the commit would include', () => {
   it.each([
     ['git status', undefined],
     ['git commit-tree abc', undefined],
-    // Text that only looks like a commit is scanned too: a needless scan is cheap, a missed commit is not.
-    ['echo "git commit"', 'all'],
+    ['echo "git commit"', undefined],
     ['git commit -m "fix: x"', 'staged'],
     ['git commit -m "$(cat <<\'EOF\'\nfix: x\nEOF\n)"', 'all'],
     ['git commit --amend --no-edit', 'staged'],
@@ -64,8 +63,37 @@ describe('planScan: what the commit would include', () => {
     ['git -C sub commit -m "x"', 'staged'],
     ['cd x && git -c core.editor=true commit -m "x" && git push', 'staged'],
     ['git.exe commit -m "x"', 'staged'],
+    ['git -P commit -m x', 'staged'],
+    // Anything but a lone, plainly written commit scans every working-tree change.
+    ['/usr/bin/git commit -am x', 'all'],
+    ['npm run gen && git add -A && git commit -m x', 'all'],
+    ['git commit -m a && git commit -am b', 'all'],
+    ['git commit --pathspec-from-file=f -m x', 'all'],
+    ['git commit --al -m x', 'all'],
+    ['git commit -a -m x src/a.ts', 'all'],
+    ['git ci -m x', 'all'],
   ])('%j → %s', (command, mode) => {
-    expect(planScan(command, repoRoot)?.mode).toBe(mode);
+    const plan = planScan(command, repoRoot, ['ci']);
+    expect(plan && 'mode' in plan ? plan.mode : plan).toBe(mode);
+  });
+
+  it('follows a leading cd to the repository the commit runs in', () => {
+    expect(planScan('cd sub && git commit -m x', repoRoot)).toEqual({
+      cwd: path.join(repoRoot, 'sub'),
+      mode: 'staged',
+      paths: [],
+    });
+  });
+
+  it.each([
+    'git -C "$REPO" commit -m x',
+    'git -C "$(git rev-parse --show-toplevel)" commit -m x',
+    'cd $HOME/x && git commit -m x',
+    'git --git-dir ../other/.git commit -m x',
+  ])('blocks when it cannot tell the repository: %j', (command) => {
+    expect(planScan(command, repoRoot)).toEqual({
+      block: expect.stringContaining('cannot tell which repository'),
+    });
   });
 
   it('keeps the paths of git commit <paths>', () => {
@@ -116,6 +144,20 @@ const fakeGitleaks =
   };
 
 describe('scanPlan', () => {
+  it('refuses, instead of passing, when the folder is not inside a git work tree', () => {
+    const outside = mkdtempSync(path.join(tmpdir(), 'helmstead-not-a-repo-'));
+    try {
+      expect(() =>
+        scanPlan(
+          { cwd: outside, mode: 'staged', paths: [] },
+          fakeGitleaks('unused'),
+        ),
+      ).toThrow(/not inside a git work tree/);
+    } finally {
+      rmSync(outside, { recursive: true, force: true });
+    }
+  });
+
   it('finds a staged token', () => {
     const token = fakeToken();
     writeFileSync(

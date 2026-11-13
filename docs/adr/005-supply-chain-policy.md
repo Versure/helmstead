@@ -57,18 +57,25 @@ A false positive goes in `.gitleaksignore` by fingerprint, one reviewed line eac
 more.
 
 - A PreToolUse hook (`scripts/sdlc/hooks/scan-secrets.mjs`) scans what each `git commit` Claude runs would include (the
-  index, or a temporary index for `-a`, paths and a chained `git add`) and blocks it on a finding. It prints rule, file
-  and line, never the value.
+  index for a lone plain commit; for anything else, such as `-a`, paths, other commands before it, several commits, git
+  aliases or quoting it cannot follow, every working-tree change through a temporary index) and blocks it on a finding.
+  It prints rule, file and line, never the value. It also blocks when it cannot tell which repository the commit is in.
+  It runs before the command, so content that an earlier part of the same command only creates is not there yet; the
+  CI scan catches that.
 - The `secret-scan` CI job scans every commit of a PR (`base..head`), so a secret added and removed again still fails:
   it is in the history and must be rotated. The weekly run scans the full history of `main`.
 
 We use the gitleaks binary, not the gitleaks GitHub Action, which needs a paid licence for organisations. The release is
 pinned in `tools/supply-chain/gitleaks.json`: the version, and per OS and architecture the URL of the official
 `gitleaks/gitleaks` GitHub release asset and its SHA-256 from the release's checksums file. The same code
-(`tools/supply-chain/gitleaks.mjs`) obtains it for the hook, CI and the weekly run: a gitleaks on the PATH only if its
-version matches the pin, else a cached copy (outside the repository, in the OS user cache folder, re-hashed before each
-use), else a download that is verified against the pinned checksum before anything is extracted or run. A mismatch
-deletes the download. When gitleaks cannot be obtained (offline, no cache), the hook blocks the commit: it fails closed.
+(`tools/supply-chain/gitleaks.mjs`) obtains it for the hook, CI and the weekly run. The pin also holds the SHA-256 of
+the binary inside each archive (`binarySha256`), and nothing else is trusted: a gitleaks on the PATH or in the cache
+(outside the repository, in the OS user cache folder) is used only when its hash is that value, so a stub that prints
+the right version, or a cached file swapped with its neighbours, is ignored. Otherwise the archive is downloaded
+(through `curl` when `HTTPS_PROXY` is set, since Node's `fetch` ignores proxies), verified against the pinned checksum
+before anything is extracted or run, and the extracted binary is checked against `binarySha256`. A mismatch deletes it.
+Findings exit with code 3; any other non-zero exit, including gitleaks' exit 1 after a partial scan, fails the check.
+When gitleaks cannot be obtained or does not finish, the hook blocks the commit: it fails closed.
 
 ### No network in tests, and the live-test escape hatch
 
@@ -82,9 +89,15 @@ Plan §9 says tests make no live calls. That is now enforced at runtime on both 
   `apps/core/tests/Directory.Build.props`, sets `HttpClient.DefaultProxy` in a module initializer to an unreachable
   loopback proxy that only loopback bypasses. Every `HttpClient` without its own proxy, including `IHttpClientFactory`
   clients, then fails fast; `WebApplicationFactory` (in memory) and fake message handlers still work. An ArchUnitNET rule
-  (`Architecture/NetworkRules.cs`) forbids test code the ways around it: `Socket`, `TcpClient`, `UdpClient`, `WebProxy`,
-  `IWebProxy`, setting `UseProxy` or `Proxy` on a handler, `SocketsHttpHandler.ConnectCallback` and
-  `HttpClient.DefaultProxy`. Only `NoNetwork.cs` may use them.
+  (`Architecture/NetworkRules.cs`), applied to every test project of `Helmstead.Core.slnx`, forbids test code the
+  ways around it: `Socket`, `TcpClient`, `UdpClient`, `WebProxy`, `IWebProxy`, `Dns`, `SmtpClient`, `Ping`,
+  `QuicConnection`, setting `UseProxy` or `Proxy` on a handler, `SocketsHttpHandler.ConnectCallback`,
+  `HttpClient.DefaultProxy`, `ClientWebSocketOptions.Proxy` and `WebRequest.Proxy`/`DefaultWebProxy`. Only
+  `NoNetwork.cs` may use them.
+
+Known limits: both guards work inside the test process, so a test that starts another program (`curl`) is not
+stopped, and the .NET rule matches the listed APIs by name, so a library that wraps them is not seen. Both need
+deliberate code and show up in review.
 
 A test that really needs a live API is marked: a Vitest file named `*.live.spec.ts`, which every test include leaves
 out, or an xUnit test with `[Trait("Category", "Live")]`, which every `dotnet test` run filters out

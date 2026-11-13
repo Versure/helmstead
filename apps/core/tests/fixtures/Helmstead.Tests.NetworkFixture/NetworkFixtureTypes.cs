@@ -1,6 +1,10 @@
 using System.Net;
 using System.Net.Http;
+using System.Net.Mail;
+using System.Net.NetworkInformation;
+using System.Net.Quic;
 using System.Net.Sockets;
+using System.Net.WebSockets;
 
 namespace Helmstead.Tests.NetworkFixture;
 
@@ -25,6 +29,25 @@ public static class NetworkFixtureTypes
     public static SocketsHttpHandler OwnConnect() => new() { ConnectCallback = (_, _) => ValueTask.FromResult<Stream>(Stream.Null) };
 
     public static void ResetDefaultProxy() => HttpClient.DefaultProxy = new WebProxy();
+
+    public static IPAddress[] Resolve() => Dns.GetHostAddresses("example.com");
+
+    public static SmtpClient Smtp() => new("198.51.100.1");
+
+    public static Ping Pinger() => new();
+
+    public static Type Quic() => typeof(QuicConnection);
+
+    public static void WebSocketProxy(ClientWebSocket socket) => socket.Options.Proxy = null;
+
+#pragma warning disable SYSLIB0014 // WebRequest is obsolete, which is why a test must not use it to get around the guard.
+    public static void LegacyDefaultProxy() => WebRequest.DefaultWebProxy = null;
+
+    public static void LegacyProxy(WebRequest request) => request.Proxy = null;
+
+    // Compiles to a call of WebRequest.set_Proxy, the declaration it overrides.
+    public static void LegacyHttpProxy(HttpWebRequest request) => request.Proxy = null;
+#pragma warning restore SYSLIB0014
 }
 
 /// <summary>The only forbidden use sits in a lambda, which the compiler moves into a generated type.</summary>

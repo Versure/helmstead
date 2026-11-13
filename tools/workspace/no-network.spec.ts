@@ -123,6 +123,19 @@ describe('live tests (spec 003 criterion 16)', () => {
     expect(liveTestExclude({ HELMSTEAD_LIVE_TESTS: '1' })).toEqual([]);
   });
 
+  it('keeps the runtime proof that the guard is active in an Angular test run', () => {
+    // The config checks above say the setup file is registered; this spec proves the Angular builder really loads it.
+    expect(
+      readFileSync(
+        path.join(
+          repoRoot,
+          'libs/web/system/data-access/src/lib/no-network.spec.ts',
+        ),
+        'utf8',
+      ),
+    ).toContain("fetch('http://192.0.2.1/')");
+  });
+
   it('are never enabled by a workflow', () => {
     const dir = path.join(repoRoot, '.github/workflows');
     for (const file of readdirSync(dir)) {

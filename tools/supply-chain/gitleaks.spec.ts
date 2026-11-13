@@ -16,12 +16,15 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import {
   defaultCacheDir,
   downloadFile,
+  cachedGitleaks,
   ensureGitleaks,
   loadPin,
+  runGitleaks,
   sha256,
 } from './gitleaks.mjs';
 
 const windows = process.platform === 'win32';
+const FAKE_BINARY = '#!/bin/sh\necho 8.30.1\n';
 const key = `${process.platform}-${process.arch}`;
 
 // A stand-in "gitleaks": a shell script that prints the pinned version. It is packed into a .tar.gz at runtime and
@@ -36,9 +39,7 @@ beforeAll(async () => {
   work = mkdtempSync(path.join(tmpdir(), 'helmstead-gitleaks-test-'));
   const src = path.join(work, 'src');
   mkdirSync(src);
-  writeFileSync(path.join(src, 'gitleaks'), '#!/bin/sh\necho 8.30.1\n', {
-    mode: 0o755,
-  });
+  writeFileSync(path.join(src, 'gitleaks'), FAKE_BINARY, { mode: 0o755 });
   const tar = windows
     ? path.join(process.env.SystemRoot ?? 'C:\\Windows', 'System32', 'tar.exe')
     : 'tar';
@@ -68,9 +69,15 @@ beforeEach(() => {
   cacheDir = mkdtempSync(path.join(work, 'cache-'));
 });
 
-const pin = (sha = sha256(archive), url = `${baseUrl}/fixture.tar.gz`) => ({
+const pin = (
+  sha = sha256(archive),
+  url = `${baseUrl}/fixture.tar.gz`,
+  binarySha = sha256(Buffer.from(FAKE_BINARY)),
+) => ({
   version: '8.30.1',
-  assets: { [key]: { url, sha256: sha, binary: 'gitleaks' } },
+  assets: {
+    [key]: { url, sha256: sha, binarySha256: binarySha, binary: 'gitleaks' },
+  },
 });
 
 describe('ensureGitleaks', () => {
@@ -153,26 +160,69 @@ describe('ensureGitleaks', () => {
     expect(readFileSync(binary, 'utf8')).toContain('echo 8.30.1');
   });
 
+  it('uses a gitleaks on the PATH only when it is the pinned binary', async () => {
+    const bin = mkdtempSync(path.join(work, 'path-'));
+    writeFileSync(path.join(bin, 'gitleaks'), FAKE_BINARY, { mode: 0o755 });
+
+    expect(
+      await ensureGitleaks({ pin: pin(), cacheDir, searchPath: bin }),
+    ).toBe(path.join(bin, 'gitleaks'));
+    expect(requests).toBe(0);
+
+    // Same version string, different binary (a stub that would always pass): not trusted.
+    writeFileSync(
+      path.join(bin, 'gitleaks'),
+      '#!/bin/sh\necho 8.30.1\nexit 0\n',
+      {
+        mode: 0o755,
+      },
+    );
+    expect(
+      await ensureGitleaks({ pin: pin(), cacheDir, searchPath: bin }),
+    ).not.toBe(path.join(bin, 'gitleaks'));
+    expect(requests).toBe(1);
+  });
+
+  it('does not trust a cached binary swapped together with anything next to it', async () => {
+    const binary = await ensureGitleaks({
+      pin: pin(),
+      cacheDir,
+      searchPath: '',
+    });
+    writeFileSync(binary, '#!/bin/sh\nexit 0\n');
+    writeFileSync(`${binary}.sha256`, `${sha256(readFileSync(binary))}\n`);
+
+    expect(
+      cachedGitleaks({ pin: pin(), cacheDir, searchPath: '' }),
+    ).toBeUndefined();
+  });
+
+  it('blocks when the extracted binary is not the pinned one, and keeps nothing', async () => {
+    const wrongBinary = pin(undefined, undefined, sha256(Buffer.from('other')));
+
+    await expect(
+      ensureGitleaks({ pin: wrongBinary, cacheDir, searchPath: '' }),
+    ).rejects.toThrow(/does not match its pinned binarySha256/);
+    expect(readdirSync(path.join(cacheDir, 'gitleaks', '8.30.1', key))).toEqual(
+      [],
+    );
+  });
+
   it.skipIf(windows)(
-    'uses a gitleaks on the PATH only when its version matches the pin',
-    async () => {
-      const bin = mkdtempSync(path.join(work, 'path-'));
-      writeFileSync(path.join(bin, 'gitleaks'), '#!/bin/sh\necho v8.30.1\n', {
-        mode: 0o755,
-      });
+    'treats a gitleaks error as a failed scan, even when it wrote an empty report',
+    () => {
+      const bin = mkdtempSync(path.join(work, 'failing-'));
+      const fake = path.join(bin, 'gitleaks');
+      // Like gitleaks after a partial scan: writes "[]" to --report-path, then exits 1.
+      writeFileSync(
+        fake,
+        '#!/bin/sh\nfor a in "$@"; do case "$a" in --report-path=*) echo "[]" > "${a#--report-path=}";; esac; done\necho "partial scan" >&2\nexit 1\n',
+        { mode: 0o755 },
+      );
 
-      expect(
-        await ensureGitleaks({ pin: pin(), cacheDir, searchPath: bin }),
-      ).toBe(path.join(bin, 'gitleaks'));
-      expect(requests).toBe(0);
-
-      writeFileSync(path.join(bin, 'gitleaks'), '#!/bin/sh\necho 8.0.0\n', {
-        mode: 0o755,
-      });
-      expect(
-        await ensureGitleaks({ pin: pin(), cacheDir, searchPath: bin }),
-      ).not.toBe(path.join(bin, 'gitleaks'));
-      expect(requests).toBe(1);
+      expect(() => runGitleaks(fake, ['git', work])).toThrow(
+        /gitleaks failed \(exit 1/,
+      );
     },
   );
 
@@ -231,6 +281,9 @@ describe('the pinned release', () => {
     )) {
       expect(asset.url.startsWith(prefix)).toBe(true);
       expect(asset.sha256).toMatch(/^[0-9a-f]{64}$/);
+      expect((asset as { binarySha256: string }).binarySha256).toMatch(
+        /^[0-9a-f]{64}$/,
+      );
     }
     expect(existsSync(path.join(import.meta.dirname, 'gitleaks.json'))).toBe(
       true,

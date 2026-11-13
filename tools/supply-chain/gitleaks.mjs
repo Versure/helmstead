@@ -21,6 +21,8 @@ import { homedir, tmpdir } from 'node:os';
 import path from 'node:path';
 import { REPO_ROOT } from './policy.mjs';
 
+const LEAKS_EXIT = 3;
+
 export const PIN_PATH = path.join(import.meta.dirname, 'gitleaks.json');
 
 export function loadPin(file = PIN_PATH) {
@@ -51,21 +53,15 @@ function assetFor(pin, platform, arch) {
       `No pinned gitleaks release for ${platform}-${arch} in tools/supply-chain/gitleaks.json (pinned: ${Object.keys(pin.assets ?? {}).join(', ')}).`,
     );
   }
-  if (!/^[0-9a-f]{64}$/.test(asset.sha256 ?? '')) {
+  if (
+    !/^[0-9a-f]{64}$/.test(asset.sha256 ?? '') ||
+    !/^[0-9a-f]{64}$/.test(asset.binarySha256 ?? '')
+  ) {
     throw new Error(
-      `The pinned SHA-256 for ${platform}-${arch} is not a SHA-256 hash.`,
+      `The pinned SHA-256 for ${platform}-${arch} or binary SHA-256 is not a SHA-256 hash.`,
     );
   }
   return asset;
-}
-
-/** The version a gitleaks binary reports, or undefined when it cannot run. */
-export function versionOf(binary) {
-  const run = spawnSync(binary, ['version'], {
-    encoding: 'utf8',
-    timeout: 15_000,
-  });
-  return run.status === 0 ? normalizeVersion(run.stdout) : undefined;
 }
 
 function onPath(searchPath, binaryName) {
@@ -83,16 +79,21 @@ function cachePaths(pin, asset, cacheDir, platform, arch) {
     normalizeVersion(pin.version),
     `${platform}-${arch}`,
   );
-  return {
-    folder,
-    binary: path.join(folder, asset.binary),
-    marker: path.join(folder, `${asset.binary}.sha256`),
-  };
+  return { folder, binary: path.join(folder, asset.binary) };
+}
+
+/** Whether a file is exactly the pinned gitleaks binary. Nothing else is trusted: not its version, not a marker. */
+function isPinnedBinary(file, asset) {
+  try {
+    return sha256(readFileSync(file)) === asset.binarySha256;
+  } catch {
+    return false;
+  }
 }
 
 /**
- * A gitleaks of the pinned version that is already here, without downloading: one on the PATH whose version
- * matches, or the cached copy if its hash still matches the one recorded when it was cached.
+ * A gitleaks that is already here, without downloading: one on the PATH or the cached copy, accepted only when its
+ * SHA-256 is the binarySha256 committed in gitleaks.json. Another build of the same version is ignored.
  * @returns {string | undefined}
  */
 export function cachedGitleaks(options = {}) {
@@ -105,21 +106,13 @@ export function cachedGitleaks(options = {}) {
     options.searchPath ?? process.env.PATH,
     asset.binary,
   );
-  if (installed && versionOf(installed) === normalizeVersion(pin.version))
-    return installed;
+  if (installed && isPinnedBinary(installed, asset)) return installed;
 
-  const { binary, marker } = cachePaths(
-    pin,
-    asset,
-    options.cacheDir,
-    platform,
-    arch,
-  );
-  if (existsSync(binary) && existsSync(marker)) {
-    if (readFileSync(marker, 'utf8').trim() === sha256(readFileSync(binary)))
-      return binary;
+  const { binary } = cachePaths(pin, asset, options.cacheDir, platform, arch);
+  if (existsSync(binary)) {
+    if (isPinnedBinary(binary, asset)) return binary;
     options.log?.(
-      'The cached gitleaks does not match the hash recorded when it was cached; downloading it again.',
+      'The cached gitleaks is not the pinned binary; downloading it again.',
     );
   }
   return undefined;
@@ -130,7 +123,7 @@ export function cachedGitleaks(options = {}) {
  *   pin?: any, cacheDir?: string, searchPath?: string, platform?: string, arch?: string,
  *   download?: (url: string) => Promise<Buffer>, log?: (message: string) => void,
  * }} [options]
- * @returns {Promise<string>} the path of a gitleaks binary of the pinned version
+ * @returns {Promise<string>} the path of the pinned gitleaks binary
  */
 export async function ensureGitleaks(options = {}) {
   const pin = options.pin ?? loadPin();
@@ -143,7 +136,7 @@ export async function ensureGitleaks(options = {}) {
   if (found) return found;
 
   // Not here yet: download, verify against the pin, then extract. The archive stays in memory until it is verified.
-  const { folder, binary, marker } = cachePaths(
+  const { folder, binary } = cachePaths(
     pin,
     asset,
     options.cacheDir,
@@ -159,8 +152,8 @@ export async function ensureGitleaks(options = {}) {
   } catch (error) {
     throw new Error(
       `Could not download gitleaks ${pin.version} (${asset.url}): ${error.message}. ` +
-        'You may be offline, and there is no cached copy. Connect and try again, or install gitleaks ' +
-        `${pin.version} on the PATH. The commit stays blocked until a secret scan can run.`,
+        'You may be offline, and there is no cached copy. Connect and try again, or put the official gitleaks ' +
+        `${pin.version} binary on the PATH. The commit stays blocked until a secret scan can run.`,
     );
   }
   const actual = sha256(archive);
@@ -183,8 +176,12 @@ export async function ensureGitleaks(options = {}) {
     if (!existsSync(extracted))
       throw new Error(`The archive has no ${asset.binary}.`);
     if (platform !== 'win32') chmodSync(extracted, 0o755);
+    if (!isPinnedBinary(extracted, asset)) {
+      throw new Error(
+        `The extracted ${asset.binary} does not match its pinned binarySha256. It was deleted and not run.`,
+      );
+    }
     renameSync(extracted, binary);
-    writeFileSync(marker, `${sha256(readFileSync(binary))}\n`);
   } finally {
     rmSync(download, { force: true });
     rmSync(staging, { recursive: true, force: true });
@@ -213,8 +210,35 @@ function extract(archive, into, member) {
   }
 }
 
-/** Downloads a URL into memory, following redirects (GitHub release assets redirect to a CDN). */
-export async function downloadFile(url) {
+/**
+ * Downloads a URL into memory, following redirects (GitHub release assets redirect to a CDN). Node's fetch ignores
+ * HTTPS_PROXY, so behind a proxy the download goes through curl, which honours it.
+ */
+export async function downloadFile(url, env = process.env) {
+  const proxy =
+    env.HTTPS_PROXY ?? env.https_proxy ?? env.HTTP_PROXY ?? env.http_proxy;
+  if (proxy && !url.startsWith('http://127.0.0.1')) {
+    const run = spawnSync(
+      'curl',
+      [
+        '--silent',
+        '--show-error',
+        '--fail',
+        '--location',
+        '--max-time',
+        '120',
+        url,
+      ],
+      {
+        maxBuffer: 256 * 1024 * 1024,
+      },
+    );
+    if (run.status !== 0)
+      throw new Error(
+        `curl: ${run.error?.message ?? String(run.stderr).trim()}`,
+      );
+    return run.stdout;
+  }
   const response = await fetch(url, {
     redirect: 'follow',
     signal: AbortSignal.timeout(120_000),
@@ -243,7 +267,8 @@ export function runGitleaks(
         '--no-banner',
         '--redact=100',
         '--log-level=error',
-        '--exit-code=1',
+        // Findings exit 3; gitleaks itself exits 1 on any error, even after writing a (partial) report.
+        `--exit-code=${LEAKS_EXIT}`,
         '--report-format=json',
         `--report-path=${report}`,
         `--config=${path.join(configRoot, '.gitleaks.toml')}`,
@@ -252,7 +277,7 @@ export function runGitleaks(
       { cwd, env, encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 },
     );
     if (run.status === 0) return { findings: [] };
-    if (run.status === 1 && existsSync(report)) {
+    if (run.status === LEAKS_EXIT && existsSync(report)) {
       const findings = JSON.parse(readFileSync(report, 'utf8') || '[]');
       // --redact already replaced the secret; drop the fields that held it anyway, so nothing downstream can print it.
       return {
@@ -285,13 +310,10 @@ export function describeFinding(finding) {
  */
 export async function scanHistory({ logOpts, report } = {}) {
   const binary = await ensureGitleaks({ log: (m) => console.error(m) });
-  const args = [
-    'git',
-    ...(logOpts ? [`--log-opts=${logOpts}`] : []),
-    REPO_ROOT,
-  ];
+  // Without a range: the history of the checked-out branch (HEAD), not every fetched branch and tag.
+  const args = ['git', `--log-opts=${logOpts || 'HEAD'}`, REPO_ROOT];
   const { findings } = runGitleaks(binary, args);
-  const scope = logOpts ? `commits ${logOpts}` : 'the full history';
+  const scope = logOpts ? `commits ${logOpts}` : 'the full history of HEAD';
   const text =
     findings.length === 0
       ? `Secret scan passed: gitleaks ${loadPin().version} found nothing in ${scope}.`

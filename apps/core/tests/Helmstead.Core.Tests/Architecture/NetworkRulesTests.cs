@@ -17,8 +17,17 @@ public sealed class NetworkRulesTests(WebApplicationFactory<Program> factory) : 
     // TEST-NET-1 (RFC 5737) is never routed, so even a guard that failed open would not reach a real host.
     private const string TestNet = "http://192.0.2.1/";
 
+    // Every test project of the solution (found in Helmstead.Core.slnx, not listed here), plus the fixture. A test
+    // project that is not in this test's output cannot be loaded, so it fails here instead of escaping the rule.
+    private static readonly Lazy<string[]> SolutionTestProjects = new(() =>
+        [.. XDocument.Load(Path.Combine(AssemblyDiscovery.CoreDirectory(), "Helmstead.Core.slnx"))
+            .Descendants("Project")
+            .Select(project => (string)project.Attribute("Path")!)
+            .Where(path => path.StartsWith("tests/", StringComparison.Ordinal))
+            .Select(path => Path.GetFileNameWithoutExtension(path))]);
+
     private static readonly Lazy<Architecture> TestAssemblies = new(() =>
-        new ArchLoader().LoadAssemblies([.. AssemblyDiscovery.Load(["Helmstead.Core.Tests", "Helmstead.Tests.NetworkFixture"])]).Build());
+        new ArchLoader().LoadAssemblies([.. AssemblyDiscovery.Load([.. SolutionTestProjects.Value, "Helmstead.Tests.NetworkFixture"])]).Build());
 
     // With HELMSTEAD_LIVE_TESTS=1 (live tests only, never in CI) the guard is lifted, so there is nothing to block.
     private static bool LiveTests => Environment.GetEnvironmentVariable("HELMSTEAD_LIVE_TESTS") == "1";
@@ -94,12 +103,18 @@ public sealed class NetworkRulesTests(WebApplicationFactory<Program> factory) : 
     }
 
     [Fact]
-    public void The_real_test_code_obeys_the_rule()
+    public void The_real_test_code_of_every_solution_test_project_obeys_the_rule()
     {
-        var types = TestAssemblies.Value.Types.Where(type => type.Assembly.Name == "Helmstead.Core.Tests").ToArray();
+        var scanned = TestAssemblies.Value.Assemblies.Select(assembly => assembly.Name).ToHashSet();
 
-        Assert.NotEmpty(types);
-        foreach (var result in NetworkRules.Rule.ToArchRule().Evaluate(TestAssemblies.Value).Where(r => r.EvaluatedObject is IType t && t.Assembly.Name == "Helmstead.Core.Tests"))
+        Assert.NotEmpty(SolutionTestProjects.Value);
+        foreach (var project in SolutionTestProjects.Value)
+        {
+            Assert.Contains(project, scanned);
+        }
+
+        var real = SolutionTestProjects.Value.ToHashSet();
+        foreach (var result in NetworkRules.Rule.ToArchRule().Evaluate(TestAssemblies.Value).Where(r => r.EvaluatedObject is IType t && real.Contains(t.Assembly.Name)))
         {
             Assert.True(result.Passed, result.Description);
         }
@@ -134,13 +149,7 @@ public sealed class NetworkRulesTests(WebApplicationFactory<Program> factory) : 
     [Fact]
     public void Every_test_project_in_the_solution_has_the_module_initializer()
     {
-        var solution = AssemblyDiscovery.CoreDirectory();
-        var testProjects = XDocument.Load(Path.Combine(solution, "Helmstead.Core.slnx"))
-            .Descendants("Project")
-            .Select(project => (string)project.Attribute("Path")!)
-            .Where(path => path.StartsWith("tests/", StringComparison.Ordinal))
-            .Select(path => Path.GetFileNameWithoutExtension(path))
-            .ToArray();
+        var testProjects = SolutionTestProjects.Value;
 
         Assert.NotEmpty(testProjects);
         foreach (var name in testProjects)

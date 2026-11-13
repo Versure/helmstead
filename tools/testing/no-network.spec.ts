@@ -34,6 +34,13 @@ describe('the network guard (loaded as a Vitest setup file)', () => {
     socket.destroy();
   });
 
+  it('blocks a "localhost" connection with a custom resolver, which could map it anywhere', () => {
+    const lookup = () => undefined;
+    expect(() => net.connect({ host: 'localhost', port: 80, lookup })).toThrow(
+      /custom lookup/,
+    );
+  });
+
   it('blocks tls.connect to a non-loopback address', () => {
     expect(() => tls.connect({ host: TEST_NET, port: 443 })).toThrow(blocked);
     expect(() => tls.connect(443, TEST_NET)).toThrow(blocked);

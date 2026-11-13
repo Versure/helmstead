@@ -95,8 +95,12 @@ function connectHost(args: unknown[]): string | undefined {
   // connect([options]) with a list from net internals, connect(options), connect(path) or connect(port, host).
   const options = Array.isArray(first) ? first[0] : first;
   if (options && typeof options === 'object') {
-    const o = options as { host?: string; path?: string };
+    const o = options as { host?: string; path?: string; lookup?: unknown };
     if (o.path) return 'localhost'; // a Unix socket or named pipe never leaves the machine
+    // A custom resolver could map "localhost" to any address, so only a loopback IP literal passes with one.
+    if (typeof o.lookup === 'function' && isIP(String(o.host ?? '')) === 0) {
+      return `${o.host ?? 'localhost'} (custom lookup)`;
+    }
     return o.host;
   }
   if (typeof options === 'string' && Number.isNaN(Number(options)))
