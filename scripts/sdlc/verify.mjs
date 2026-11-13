@@ -28,7 +28,7 @@ if (hook) {
     ...git('diff', '--name-only', `${base}...HEAD`).split('\n'),
     ...git('status', '--porcelain').split('\n').map((l) => l.slice(3)),
   ].filter(Boolean);
-  if (!changed.some((f) => /^(apps|libs|tools)\/|^(eslint\.config\.[cm]?js|stylelint\.config\.[cm]?js|\.stylelintignore|sheriff\.config\.ts|nx\.json|tsconfig\.base\.json|package(-lock)?\.json)$/.test(f))) process.exit(0);
+  if (!changed.some((f) => /^(apps|libs|tools)\/|^(eslint\.config\.[cm]?js|stylelint\.config\.[cm]?js|\.stylelintignore|sheriff\.config\.ts|nx\.json|tsconfig\.base\.json|package(-lock)?\.json|dependency-policy\.json)$/.test(f))) process.exit(0);
 }
 
 if (!existsSync('nx.json')) {
@@ -56,7 +56,10 @@ const nx = binOf('nx');
 const steps = [
   // First, because the @nx/dotnet project graph and its targets (built with --no-restore) need restored packages.
   { name: 'restore NuGet packages', command: 'dotnet', args: ['restore', 'apps/core/Helmstead.Core.slnx', '--nologo'] },
-  { name: 'guard rails (scope tags, lint boundaries)', bin: binOf('vitest'), args: ['run', '--config', 'tools/vitest.config.mts'] },
+  // Offline, on every run (spec 003): the policy file is valid and every npm and NuGet licence is allowed for its tier.
+  // It reads the restore output above, so it runs after it.
+  { name: 'licence check (dependency-policy.json)', bin: 'tools/supply-chain/cli.mjs', args: ['licenses'] },
+  { name: 'guard rails (scope tags, lint boundaries, supply chain, network ban)', bin: binOf('vitest'), args: ['run', '--config', 'tools/vitest.config.mts'] },
   { name: 'format check', bin: nx, args: ['format:check'] },
   // Every frontend style uses the Helm tokens (stylelint.config.mjs). A Stylelint error exits non-zero and fails the run.
   { name: 'stylelint (Helm design tokens)', bin: binOf('stylelint'), args: ['apps/web/**/*.{css,scss}', 'libs/**/*.{css,scss}', '--config', 'stylelint.config.mjs'] },
