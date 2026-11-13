@@ -14,7 +14,13 @@
         "{apps,libs}/**/*{session,access,api,refresh,bearer}{-,_,.,}token*{,/**}",
         "**/appsettings*.json",
         "**/.env*",
-        "SECURITY.md"
+        "SECURITY.md",
+        ".gitleaks.toml",
+        ".gitleaksignore",
+        "tools/supply-chain/**",
+        "tools/testing/**",
+        "apps/core/tests/Shared/**",
+        "**/NoNetwork*"
       ]
     },
     "architecture": {
@@ -77,7 +83,10 @@
         "global.json",
         "**/Cargo.toml",
         "**/Cargo.lock",
-        "**/Dockerfile"
+        "**/Dockerfile",
+        "dependency-policy.json",
+        "scripts/sdlc/hooks/**",
+        "apps/core/tests/Directory.Build.props"
       ]
     }
   }
