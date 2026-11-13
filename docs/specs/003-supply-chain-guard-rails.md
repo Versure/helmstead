@@ -1,7 +1,7 @@
 ---
 id: 003
 title: Supply-chain and test hygiene guard rails
-status: approved          # draft | approved | built
+status: built             # draft | approved | built
 type: feature            # feature | fix | chore | spike
 plan-phase: 0            # docs/plan.md §8
 branch: feat/003-supply-chain-guard-rails

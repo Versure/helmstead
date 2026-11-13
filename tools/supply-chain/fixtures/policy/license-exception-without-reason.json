@@ -1,0 +1,7 @@
+{
+  "licenses": { "shipped": ["MIT"], "tooling": ["MPL-2.0"] },
+  "licenseExceptions": [
+    { "ecosystem": "npm", "package": "union", "versionRange": "0.5.0" }
+  ],
+  "vulnerabilityExceptions": []
+}

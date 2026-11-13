@@ -1,0 +1,97 @@
+name: supply-chain-weekly
+
+# Spec 003 criterion 17: new advisories appear without any change to the repository, and an old secret may only be
+# found by a newer gitleaks rule. Once a week (and on demand) this checks main: vulnerabilities, licences and the full
+# history for secrets. On failure it opens an issue, or comments on the open one, with the findings and a link to the
+# run. Secret values never reach the issue: the scan prints rule, file, line and commit only (values redacted).
+on:
+  schedule:
+    # Mondays 05:17 UTC.
+    - cron: '17 5 * * 1'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  check:
+    name: weekly supply-chain check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+      - run: dotnet restore apps/core/Helmstead.Core.slnx --nologo
+      - run: mkdir -p "$RUNNER_TEMP/findings"
+
+      - name: Vulnerabilities
+        id: vulnerabilities
+        continue-on-error: true
+        shell: bash
+        run: node tools/supply-chain/cli.mjs vulnerabilities 2>&1 | tee "$RUNNER_TEMP/findings/vulnerabilities.txt"
+
+      - name: Licences
+        id: licenses
+        continue-on-error: true
+        shell: bash
+        run: node tools/supply-chain/cli.mjs licenses 2>&1 | tee "$RUNNER_TEMP/findings/licenses.txt"
+
+      - name: Secrets in the full history of main
+        id: secrets
+        continue-on-error: true
+        shell: bash
+        # Only the redacted report is posted; the step log is not.
+        run: node tools/supply-chain/cli.mjs secrets --report "$RUNNER_TEMP/findings/secrets.txt"
+
+      - name: Open or update the issue
+        if: steps.vulnerabilities.outcome != 'success' || steps.licenses.outcome != 'success' || steps.secrets.outcome != 'success'
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          VULNERABILITIES: ${{ steps.vulnerabilities.outcome }}
+          LICENSES: ${{ steps.licenses.outcome }}
+          SECRETS: ${{ steps.secrets.outcome }}
+        run: |
+          title="Weekly supply-chain check failed"
+          body="$RUNNER_TEMP/findings/body.md"
+          section() {
+            local name="$1" outcome="$2" file="$3"
+            echo "### $name: $outcome"
+            echo
+            if [ "$outcome" != "success" ]; then
+              echo '```'
+              if [ -s "$file" ]; then tail -c 20000 "$file"; else echo "The check could not run; see the run log."; fi
+              echo '```'
+              echo
+            fi
+          }
+          {
+            echo "The weekly supply-chain check on \`main\` failed. Run: $RUN_URL"
+            echo
+            section "Vulnerabilities" "$VULNERABILITIES" "$RUNNER_TEMP/findings/vulnerabilities.txt"
+            section "Licences" "$LICENSES" "$RUNNER_TEMP/findings/licenses.txt"
+            section "Secrets (values redacted)" "$SECRETS" "$RUNNER_TEMP/findings/secrets.txt"
+            echo "Fix the dependency, or add a reviewed exception to dependency-policy.json (high risk, owner review)."
+            echo "A secret that was ever committed must be rotated."
+          } > "$body"
+          number=$(gh issue list --repo "$REPO" --state open --search "\"$title\" in:title" --json number,title \
+            --jq "map(select(.title == \"$title\")) | .[0].number // empty")
+          if [ -n "$number" ]; then
+            gh issue comment "$number" --repo "$REPO" --body-file "$body"
+          else
+            gh issue create --repo "$REPO" --title "$title" --body-file "$body"
+          fi
+
+      - name: Fail when a check failed
+        if: steps.vulnerabilities.outcome != 'success' || steps.licenses.outcome != 'success' || steps.secrets.outcome != 'success'
+        run: exit 1

@@ -1,0 +1,12 @@
+{
+  "licenses": { "shipped": ["MIT"], "tooling": ["MPL-2.0"] },
+  "licenseExceptions": [
+    {
+      "ecosystem": "cargo",
+      "package": "x",
+      "versionRange": "*",
+      "reason": "A reason that is long enough."
+    }
+  ],
+  "vulnerabilityExceptions": []
+}
