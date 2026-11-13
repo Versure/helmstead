@@ -131,4 +131,16 @@ describe('live tests (spec 003 criterion 16)', () => {
       );
     }
   });
+
+  it('are filtered out of .NET test runs by the Live trait', () => {
+    const props = readFileSync(
+      path.join(repoRoot, 'apps/core/tests/Directory.Build.props'),
+      'utf8',
+    );
+
+    // dotnet test reads VSTestTestCaseFilter as its default --filter, for every test project under apps/core/tests.
+    expect(props).toMatch(
+      /<PropertyGroup Condition="'\$\(HELMSTEAD_LIVE_TESTS\)' != '1'[^"]*">\s*<VSTestTestCaseFilter>Category!=Live<\/VSTestTestCaseFilter>/,
+    );
+  });
 });

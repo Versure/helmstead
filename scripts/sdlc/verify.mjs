@@ -63,6 +63,8 @@ const steps = [
   { name: 'format check', bin: nx, args: ['format:check'] },
   // Every frontend style uses the Helm tokens (stylelint.config.mjs). A Stylelint error exits non-zero and fails the run.
   { name: 'stylelint (Helm design tokens)', bin: binOf('stylelint'), args: ['apps/web/**/*.{css,scss}', 'libs/**/*.{css,scss}', '--config', 'stylelint.config.mjs'] },
+  // The .NET tests run inside this step (`dotnet test` through Nx). apps/core/tests/Directory.Build.props makes
+  // Category!=Live their default filter, so [Trait("Category", "Live")] tests never run here (spec 003).
   runAll
     ? { name: 'lint, test, build and contract check of all projects', bin: nx, args: ['run-many', '-t', ...targets] }
     : { name: `lint, test, build and contract check of affected projects (base ${base})`, bin: nx, args: ['affected', '-t', ...targets, `--base=${base}`] },
