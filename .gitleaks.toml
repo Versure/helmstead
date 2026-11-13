@@ -1,0 +1,10 @@
+# gitleaks configuration for Helmstead (spec 003, docs/adr/005-supply-chain-policy.md).
+# Used by the commit hook (scripts/sdlc/hooks/scan-secrets.mjs), the secret-scan CI job and the weekly run.
+# It extends gitleaks' default rules and adds nothing that loosens them. Changing this file is high risk.
+#
+# A false positive goes in .gitleaksignore by fingerprint, not in an allowlist here, so each one is a single,
+# reviewed entry. Tests that need a token build it at runtime from pieces; no secret-shaped literal is committed.
+title = "Helmstead"
+
+[extend]
+useDefault = true
