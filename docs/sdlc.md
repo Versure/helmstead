@@ -60,6 +60,9 @@ A new commit removes `human-approved`, so an approval always covers the code tha
 | A change in `apps/` or `libs/` is not done until lint, test and build pass | Stop hook `scripts/sdlc/verify.mjs --hook`, and the `ci` check |
 | High-risk changes wait for the owner | `risk-gate` status (`.github/workflows/risk-gate.yml`) plus branch protection on `main` |
 | Nothing reaches `main` without a PR and green checks, admins included | Branch protection, set up by `scripts/sdlc/setup-github.sh` |
+| Claude never commits a secret, and no PR contains one in any commit | PreToolUse hook `scripts/sdlc/hooks/scan-secrets.mjs` (pinned gitleaks), the `secret-scan` job of the `ci` check, and the weekly full-history scan (`.github/workflows/supply-chain-weekly.yml`) |
+| Dependencies have an allowed licence for their tier and no high or critical advisory without a current exception (`dependency-policy.json`) | Licence check in `scripts/sdlc/verify.mjs`, the `dependency-policy` job of the `ci` check, and the weekly run on `main` |
+| Tests never reach the network, except opt-in live tests that CI never runs | `tools/testing/no-network.ts` in every Vitest and Angular test target, `apps/core/tests/Shared/NoNetwork.cs` plus its ArchUnitNET rule, and the workspace tests that check both are registered (ADR 005) |
 
 Claude opens PRs with the owner's GitHub account, and GitHub does not let anyone approve their own PR. That is why approval is a label, not a GitHub review. To make approval a real review, give Claude its own GitHub account and require code-owner review for the high-risk paths.
 
