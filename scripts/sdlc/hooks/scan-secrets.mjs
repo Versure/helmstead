@@ -56,9 +56,10 @@ export function planScan(command, cwd, aliases = []) {
       // Quoting the hook cannot follow (a substitution inside quotes, a here-document). If a commit subcommand
       // appears on the line, treat it as a commit of every change; a -C on it makes the repository unknown.
       const line = after.split('\n')[0];
-      const word = [...subcommands].find((name) => new RegExp(`(^|\\s)${name}(\\s|$)`).test(line));
+      const asWord = (name) => new RegExp(`(^|\\s)${name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}(\\s|$)`);
+      const word = [...subcommands].find((name) => asWord(name).test(line));
       if (word !== undefined) {
-        const head = line.slice(0, line.search(new RegExp(`(^|\\s)${word}(\\s|$)`)));
+        const head = line.slice(0, line.search(asWord(word)));
         commits.push({ index: match.index, rest, words: [], dir: /(^|\s)(-C|--git-dir|--work-tree)\b/.test(head) ? '$' : undefined, alias: true });
       }
       continue;
@@ -83,12 +84,37 @@ export function planScan(command, cwd, aliases = []) {
       commits.push({ index: match.index, rest, words: words.slice(i + 1), dir, alias: words[i] !== 'commit' });
     }
   }
-  if (commits.length === 0) return undefined;
+  if (commits.length === 0) {
+    // `git -c alias.<name>=commit <name>` defines a commit alias on the command line: scan every change.
+    return /(^|\s)-c\s+["']?alias\./.test(command) && /\bgit\b/.test(command)
+      ? { cwd, mode: 'all', paths: [] }
+      : undefined;
+  }
 
-  // The directory: `git -C <dir>`, else a leading `cd`/`pushd`/`Set-Location <dir>`, else the hook's cwd.
+  // The hook scans one repository, found from the hook's cwd, one leading `cd <dir> &&` and `git -C <dir>`. Anything
+  // else that can move the commit somewhere else is refused rather than guessed: a later or nested cd, a subshell or
+  // shell -c, git's own GIT_DIR/GIT_WORK_TREE/GIT_INDEX_FILE, commits in different folders, and force-adds of ignored
+  // files (git add -A on the scan's copy of the index would leave them out).
   const [first] = commits;
   const before = command.slice(0, first.index);
   const cd = CD.exec(before);
+  const rest = cd ? command.slice(cd[0].length) : command;
+  const separate = 'Run the commit as its own command from the repository folder (stage files in an earlier command).';
+  if (/(^|[\s;&|(])(cd|pushd|popd|Push-Location|Pop-Location|Set-Location|sl|chdir)(\s|$|;)/i.test(rest)) {
+    return { block: `the command changes folder around the commit, so the hook cannot tell which repository to scan. ${separate}` };
+  }
+  if (/(^|[\s;&|])\(|\b(bash|sh|zsh|pwsh|powershell|cmd)(\.exe)?\s+(-\w*c|-Command|\/c)\b|\beval\b/i.test(command)) {
+    return { block: `the commit runs in a subshell or nested shell, which the hook cannot follow. ${separate}` };
+  }
+  if (/\b(GIT_DIR|GIT_WORK_TREE|GIT_INDEX_FILE|GIT_COMMON_DIR)\b/.test(command)) {
+    return { block: `the command sets GIT_DIR, GIT_WORK_TREE or GIT_INDEX_FILE, so the hook cannot tell what is committed. ${separate}` };
+  }
+  if (new Set(commits.map((c) => c.dir)).size > 1) {
+    return { block: `the command commits in more than one folder. ${separate}` };
+  }
+  if (/\bgit(\.exe)?\b[^;&|\n]*\s(add|stage)\b[^;&|\n]*\s(-f|--force|-\w*f\w*)\b|\bupdate-index\b/.test(before)) {
+    return { block: `files are force-added or the index is changed directly in the same command as the commit. ${separate}` };
+  }
   let dir = cwd;
   const target = first.dir ?? cd?.[1];
   if (target !== undefined) {
@@ -264,7 +290,12 @@ async function main() {
     input = JSON.parse(readFileSync(0, 'utf8') || '{}');
   } catch {}
   const cwd = input.cwd || process.cwd();
-  const plan = planScan(String(input.tool_input?.command ?? ''), cwd, commitAliases(cwd));
+  let plan;
+  try {
+    plan = planScan(String(input.tool_input?.command ?? ''), cwd, commitAliases(cwd));
+  } catch (error) {
+    block(`the command could not be read, so the commit is blocked.\n${error instanceof Error ? error.message : String(error)}`);
+  }
   if (!plan) process.exit(0);
   if ('block' in plan) block(plan.block);
 

@@ -59,7 +59,10 @@ more.
 - A PreToolUse hook (`scripts/sdlc/hooks/scan-secrets.mjs`) scans what each `git commit` Claude runs would include (the
   index for a lone plain commit; for anything else, such as `-a`, paths, other commands before it, several commits, git
   aliases or quoting it cannot follow, every working-tree change through a temporary index) and blocks it on a finding.
-  It prints rule, file and line, never the value. It also blocks when it cannot tell which repository the commit is in.
+  It prints rule, file and line, never the value. It also blocks, asking for the commit to run as its own command,
+  when it cannot tell which repository or which files the commit uses: a non-literal `-C`, a `cd` other than one
+  leading `cd <dir> &&`, a subshell or nested shell, `GIT_DIR`/`GIT_WORK_TREE`/`GIT_INDEX_FILE`, commits in several
+  folders, or a force-add of ignored files in the same command.
   It runs before the command, so content that an earlier part of the same command only creates is not there yet; the
   CI scan catches that.
 - The `secret-scan` CI job scans every commit of a PR (`base..head`), so a secret added and removed again still fails:

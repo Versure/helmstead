@@ -96,6 +96,44 @@ describe('planScan: what the commit would include', () => {
     });
   });
 
+  it.each([
+    [
+      'cd .claude/worktrees/x && git add -A && git commit -m x',
+      'changes folder',
+    ],
+    ['npm test && cd ../other && git commit -am x', 'changes folder'],
+    [
+      'git commit -m a && Push-Location ../o; git commit -am b',
+      'changes folder',
+    ],
+    ['(cd ../other && git commit -am x)', 'changes folder'],
+    ["bash -c 'git commit -am x'", 'nested shell'],
+    ['GIT_DIR=../o/.git git commit -m x', 'GIT_DIR'],
+    ['git commit -m a && git -C ../other commit -am b', 'more than one folder'],
+    [
+      'git add -f .claude/settings.local.json && git commit -m x',
+      'force-added',
+    ],
+    ['git update-index --add x && git commit -m x', 'force-added'],
+  ])('refuses a commit it cannot place: %j', (command, reason) => {
+    const plan = planScan(command, repoRoot);
+    expect(plan && 'block' in plan ? plan.block : plan).toContain(reason);
+  });
+
+  it('scans everything for an alias defined on the command line', () => {
+    expect(planScan('git -c alias.ci=commit ci -am x', repoRoot)).toEqual({
+      cwd: repoRoot,
+      mode: 'all',
+      paths: [],
+    });
+  });
+
+  it('copes with alias names that are not valid regular expressions', () => {
+    expect(() =>
+      planScan('git x(y -m "$(cat <<EOF\nm\nEOF\n)"', repoRoot, ['x(y']),
+    ).not.toThrow();
+  });
+
   it('keeps the paths of git commit <paths>', () => {
     expect(
       planScan('git commit -m "a b" one.ts "two words.ts"', repoRoot),

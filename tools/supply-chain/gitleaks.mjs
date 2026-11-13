@@ -2,9 +2,9 @@
 // (scripts/sdlc/hooks/scan-secrets.mjs), the `secret-scan` CI job and the weekly run, so all three use the same
 // binary obtained the same way (spec 003 criteria 11 and 12).
 //
-// Order: a gitleaks on the PATH whose version matches the pin; else the cached copy, if its hash still matches;
+// Order: a gitleaks on the PATH, or else the cached copy, but only when its SHA-256 is the pinned binarySha256;
 // else download the release archive, verify its SHA-256 against the pin before anything is extracted or run,
-// extract only the binary and cache it. Every failure throws: a caller must block, never allow.
+// extract only the binary, check it against binarySha256 and cache it. Every failure throws: a caller must block.
 import { spawnSync } from 'node:child_process';
 import { createHash, randomUUID } from 'node:crypto';
 import {
