@@ -251,12 +251,12 @@ describe('ensureGitleaks', () => {
   });
 
   it('caches outside the repository', () => {
-    expect(
-      path.relative(
-        path.resolve(import.meta.dirname, '../..'),
-        defaultCacheDir(),
-      ),
-    ).toMatch(/^\.\./);
+    const relative = path.relative(
+      path.resolve(import.meta.dirname, '../..'),
+      defaultCacheDir(),
+    );
+    // Outside means "up from the repository", or another drive on Windows, where the result is absolute.
+    expect(relative.startsWith('..') || path.isAbsolute(relative)).toBe(true);
   });
 });
 

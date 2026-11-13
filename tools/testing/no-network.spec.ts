@@ -5,6 +5,7 @@ import https from 'node:https';
 import net, { type AddressInfo } from 'node:net';
 import path from 'node:path';
 import tls from 'node:tls';
+import { pathToFileURL } from 'node:url';
 import { request as namedRequest } from 'node:http';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { GUARD, isLoopback, shouldGuard } from './no-network';
@@ -142,7 +143,8 @@ describe('the live-test escape hatch', () => {
       process.execPath,
       [
         '--import',
-        path.join(import.meta.dirname, 'no-network.ts'),
+        // A file: URL, since --import does not take a Windows drive path.
+        pathToFileURL(path.join(import.meta.dirname, 'no-network.ts')).href,
         '-e',
         "process.stdout.write(String(Boolean(require('node:net').Socket.prototype.connect[Symbol.for('helmstead.noNetworkGuard')])))",
       ],

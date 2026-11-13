@@ -256,13 +256,15 @@ export function scanPlan(plan, scan) {
   try {
     if (existsSync(index)) copyFileSync(index, tempIndex);
     const env = { ...process.env, GIT_INDEX_FILE: tempIndex };
+    // Paths are given as the commit would see them: relative to the folder it runs in, so git resolves them, not us
+    // (on Windows the same folder can be spelled two ways, e.g. RUNNER~1 and runneradmin).
     const add =
       plan.mode === 'tracked'
         ? ['add', '-u']
         : plan.mode === 'paths'
-          ? ['add', '-A', '--', ...plan.paths.map((p) => path.relative(root, path.resolve(plan.cwd, p)) || '.')]
-          : ['add', '-A'];
-    const added = git(root, add, env);
+          ? ['add', '-A', '--', ...plan.paths]
+          : ['add', '-A', '--', ':/'];
+    const added = git(plan.mode === 'paths' ? plan.cwd : root, add, env);
     if (added.status !== 0) throw new Error(`git ${add.join(' ')} failed while preparing the scan: ${added.stderr.trim()}`);
     return scan(root, env);
   } finally {
