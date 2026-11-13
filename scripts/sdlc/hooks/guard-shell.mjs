@@ -21,7 +21,7 @@ const rules = [
   [/--no-verify\b/, 'Do not skip git hooks.'],
   [/\bgh\s+(repo\s+edit|ruleset)\b/, 'Repository settings are the owner\'s to change.'],
   [/\bgh\s+label\s+(create|edit|delete)\b[^\n]*\b(risk:|needs-owner-review)/, 'Risk labels are set by the risk gate.'],
-  [/\bresolveReviewThread\b/, 'Only the owner resolves review threads. Reply in the thread and leave it open.'],
+  [/\b(un)?resolveReviewThread\b/, 'Only the owner resolves review threads. Reply in the thread and leave it open.'],
 ];
 
 for (const [pattern, reason] of rules) {
@@ -40,6 +40,24 @@ if (/\bgh(\.exe)?\s+api\b/.test(cmd)) {
     ((/\bmutation\b/.test(cmd) && /(BranchProtection|Ruleset)/i.test(cmd)) || /query=@/.test(cmd));
   if (restProtection || graphqlProtection) {
     block('Branch protection is the owner\'s to change. (GraphQL queries from a file are blocked too; inline the query.)');
+  }
+}
+
+// Only the owner resolves review threads (docs/sdlc.md §4). Besides the mutation name above, block
+// the REST routes that resolve a thread, any GraphQL write (the build needs none), and GraphQL calls
+// whose query this hook cannot read: from a file, stdin, a shell variable or command substitution.
+// Claude runs with the owner's account, so this guards against mistakes; it is not a security boundary.
+const githubCall = /\bgh(\.exe)?\s+api\b|\bcurl\b|\bwget\b|Invoke-(RestMethod|WebRequest)\b/.test(cmd);
+if (githubCall && /\/resolve\b/.test(cmd)) {
+  block('Only the owner resolves review threads. Reply in the thread and leave it open.');
+}
+if (/\b(curl|wget)\b|Invoke-(RestMethod|WebRequest)\b/.test(cmd) && /\/graphql\b/.test(cmd)) {
+  block('Call GitHub GraphQL only through `gh api graphql` with an inline query.');
+}
+if (/\bgh(\.exe)?\s+api\s+graphql\b/.test(cmd)) {
+  if (/\bmutation\b/i.test(cmd)) block('GraphQL writes are not allowed. Use the REST API (gh api, gh pr) instead.');
+  if (/--input\b|query=@|query=["']?\$|\$\(|`/.test(cmd)) {
+    block('Write GraphQL queries inline as a literal (-f query=\'...\'), so the guard can read them.');
   }
 }
 

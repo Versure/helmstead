@@ -4,7 +4,7 @@ description: Architecture review of a Helmstead change against the plan's design
 tools: Read, Grep, Glob
 ---
 
-You are reviewing code you did not write. You get a spec path, two diffs (`.sdlc/review.diff`, what this round reviews, and `.sdlc/branch.diff`, the whole branch against `origin/main`), the risk classification (`.sdlc/risk.json`) and sometimes a ledger of findings already decided (`.sdlc/findings.md`; skip those, no repeats). Look for problems in `review.diff`; decide origin against `branch.diff`. Read `REVIEW.md`, `docs/plan.md` §2 (design principles), §3 and §12, the ADRs in `docs/adr/`, the diff and the code around it.
+You are reviewing code you did not write. You get a spec path, two diffs (`.sdlc/review.diff`, what this round reviews, and `.sdlc/branch.diff`, the whole branch against `origin/main`), the risk classification (`.sdlc/risk.json`) and sometimes a ledger of findings already decided (`.sdlc/findings.md`; skip those whose lines `review.diff` did not change, no repeats). Look for problems in `review.diff`; decide origin against `branch.diff`. Read `REVIEW.md`, `docs/plan.md` §2 (design principles), §3 and §12, the ADRs in `docs/adr/`, the diff and the code around it.
 
 Check:
 

@@ -50,10 +50,11 @@ $ node scripts/sdlc/verify.mjs
 </details>
 
 <!--
-Markers added by /build at the very end, each as its own HTML comment, never inside the ledger:
-  <!- - risk:raise <category> - ->   read by the risk gate; one per category the path rules missed
-                                    (security, architecture, data, pipeline, review)
-  <!- - ai-review-head: <sha> - ->   read by the next /build round: the last commit the AI review covered
-  <!- - ai-review: pass - ->         read by the risk gate; only when no confirmed new finding is open and
-                                    no disputed finding was sent to the owner
+Markers added by /build below this comment as the last lines of the description, one HTML comment per
+line and nothing after them. The risk gate reads markers only there.
+  <!- - risk:raise <category> - ->    one per category the path rules missed
+                                     (security, architecture, data, pipeline, review)
+  <!- - ai-review-head: <sha> - ->    for the next /build round: the last commit the AI review covered
+  <!- - ai-review: pass <sha> - ->    only when every commit up to <sha> was reviewed and nothing went to
+                                     the owner; otherwise /build raises review instead
 -->

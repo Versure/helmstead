@@ -1,13 +1,14 @@
 #!/usr/bin/env node
 // Runs in .github/workflows/risk-gate.yml (pull_request_target, base-branch code only).
 // Sets the required `risk-gate` commit status on the PR head and decides on auto-merge:
-//   low risk  + AI review marker      -> success, auto-merge
-//   high risk + `human-approved` label -> success, auto-merge
-//   anything else                      -> failure, auto-merge off
+//   `human-approved` label (any risk)              -> success, auto-merge
+//   low risk + AI review pass for the head commit  -> success, auto-merge
+//   anything else                                  -> failure, auto-merge off
 // New commits remove `human-approved`, so an approval always covers the code that merges.
 import { execFileSync } from 'node:child_process';
 import { appendFileSync, readFileSync } from 'node:fs';
 import { changedFiles, changedLines, classify, title } from './classify-risk.mjs';
+import { aiReviewPassSha, onlySpecFiles } from './pr-markers.mjs';
 
 const APPROVED = 'human-approved';
 const FORCE_HIGH = 'needs-owner-review';
@@ -42,12 +43,6 @@ const result = classify(changedFiles(base, head), changedLines(base, head));
 // Raises only: from the PR body (written by the build agent) and from the owner's label.
 // A raise anywhere in the body counts, since it can only make the PR stricter.
 const body = pr.body ?? '';
-// The pass marker counts only outside <details> blocks, code and inline code: the findings ledger
-// and quoted evidence live there, and text quoted from a reviewed file must not pass a PR.
-const markerBody = body
-  .replace(/<details[\s\S]*?<\/details>/gi, '')
-  .replace(/```[\s\S]*?```/g, '')
-  .replace(/`[^`\n]*`/g, '');
 for (const m of body.matchAll(/<!--\s*risk:raise\s+([a-z,\s]+?)\s*-->/gi)) {
   for (const key of m[1].split(/[,\s]+/).filter((k) => CATEGORIES.includes(k))) {
     result.categories[key] ??= ['raised in the PR description'];
@@ -55,16 +50,34 @@ for (const m of body.matchAll(/<!--\s*risk:raise\s+([a-z,\s]+?)\s*-->/gi)) {
 }
 if (labels.has(FORCE_HIGH)) result.categories.owner = [`label \`${FORCE_HIGH}\``];
 const high = Object.keys(result.categories).length > 0;
-const aiReviewed = /<!--\s*ai-review:\s*pass\s*-->/i.test(markerBody);
 const approved = labels.has(APPROVED);
+
+// The AI review pass names the commit it covered. It counts only for the PR head, or for an ancestor
+// of it when everything after that commit is spec files (the `status: built` commit). Any other push
+// after the review leaves the PR without a pass until /build reviews it and updates the marker.
+const passSha = aiReviewPassSha(body);
+let aiReviewed = false;
+let aiReviewNote = 'the AI review pass marker is missing';
+if (passSha) {
+  try {
+    execFileSync('git', ['merge-base', '--is-ancestor', passSha, head]);
+    const after = execFileSync('git', ['diff', '--name-only', '--no-renames', passSha, head], { encoding: 'utf8' })
+      .split('\n')
+      .filter(Boolean);
+    aiReviewed = onlySpecFiles(after);
+    if (!aiReviewed) aiReviewNote = `commits after the reviewed ${passSha.slice(0, 7)} were not reviewed`;
+  } catch {
+    aiReviewNote = `the reviewed commit ${passSha.slice(0, 7)} is not in this PR's history`;
+  }
+}
 
 const names = Object.keys(result.categories).map(title).join(', ');
 let state;
 let description;
-if (high && approved) [state, description] = ['success', `High risk (${names}), approved by owner`];
+if (approved) [state, description] = ['success', high ? `High risk (${names}), approved by owner` : 'Low risk, approved by owner'];
 else if (high) [state, description] = ['failure', `Needs owner review: ${names}. Add label ${APPROVED} when done.`];
 else if (aiReviewed) [state, description] = ['success', 'Low risk, AI review passed'];
-else [state, description] = ['failure', 'Low risk, but the AI review marker is missing'];
+else [state, description] = ['failure', `Low risk, but ${aiReviewNote}. Re-run /build, or add label ${APPROVED}.`];
 
 tryGh('label', 'create', high ? 'risk:high' : 'risk:low', '--repo', repo, '--force',
   '--color', high ? 'B60205' : '0E8A16', '--description', 'Set by the risk gate');

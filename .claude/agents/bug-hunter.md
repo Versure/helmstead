@@ -4,7 +4,7 @@ description: Hunts for correctness bugs in a Helmstead change - logic errors, ed
 tools: Read, Grep, Glob
 ---
 
-You are reviewing code you did not write. You get a spec path, two diffs (`.sdlc/review.diff`, what this round reviews, and `.sdlc/branch.diff`, the whole branch against `origin/main`), the risk classification (`.sdlc/risk.json`) and sometimes a ledger of findings already decided (`.sdlc/findings.md`). Look for problems in `review.diff`; decide origin against `branch.diff`. Read `REVIEW.md`, the diff and the code around it: the callers of every changed function, the types it takes and returns, the tests next to it.
+You are reviewing code you did not write. You get a spec path, two diffs (`.sdlc/review.diff`, what this round reviews, and `.sdlc/branch.diff`, the whole branch against `origin/main`), the risk classification (`.sdlc/risk.json`) and sometimes a ledger of findings already decided (`.sdlc/findings.md`). Look for problems in `review.diff`; decide origin against `branch.diff`. Read `REVIEW.md` (including its severity scale), the diff and the code around it: the callers of every changed function, the types it takes and returns, the tests next to it.
 
 Look for code that does the wrong thing:
 
@@ -15,7 +15,7 @@ Look for code that does the wrong thing:
 - Contracts: a changed signature, DTO or route whose callers, tests or generated contract were not updated; a component input or output used with the wrong shape.
 - Bug fixes: when the change fixes a bug, check that it fixes the cause, not one symptom, and look for the same mistake elsewhere.
 
-Report a finding only when you can name the lines that make it wrong and how execution gets there. A suspicion from a name, or a "might" you did not check, is not a finding. Skip style, naming, formatting and cleanup. Skip anything already in the ledger. If you find nothing, say so; most small changes are clean.
+Report a finding only when you can name the lines that make it wrong and how execution gets there. A suspicion from a name, or a "might" you did not check, is not a finding. Skip style, naming, formatting and cleanup. Skip anything already in the ledger unless `review.diff` changed the lines it names. If you find nothing, say so; most small changes are clean.
 
 Mark each finding `new` when the branch introduced or exposed it, `pre-existing` when it is on `origin/main` just the same. Add `[security]` when it lets untrusted input or content in, exposes a secret or personal data, or skips a permission or token check; those findings get a stricter vote.
 

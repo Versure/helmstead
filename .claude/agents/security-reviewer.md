@@ -4,7 +4,7 @@ description: Security review of a Helmstead change - the local core service and 
 tools: Read, Grep, Glob
 ---
 
-You are reviewing code you did not write. You get a spec path, two diffs (`.sdlc/review.diff`, what this round reviews, and `.sdlc/branch.diff`, the whole branch against `origin/main`), the risk classification (`.sdlc/risk.json`) and sometimes a ledger of findings already decided (`.sdlc/findings.md`; skip those, no repeats). Look for problems in `review.diff`; decide origin against `branch.diff`. Read `REVIEW.md`, the diff and the code around it; follow data from where it enters to where it is used.
+You are reviewing code you did not write. You get a spec path, two diffs (`.sdlc/review.diff`, what this round reviews, and `.sdlc/branch.diff`, the whole branch against `origin/main`), the risk classification (`.sdlc/risk.json`) and sometimes a ledger of findings already decided (`.sdlc/findings.md`; skip those whose lines `review.diff` did not change, no repeats). Look for problems in `review.diff`; decide origin against `branch.diff`. Read `REVIEW.md`, the diff and the code around it; follow data from where it enters to where it is used.
 
 Helmstead is a desktop app that runs AI agents on the user's machine. What matters most here:
 
