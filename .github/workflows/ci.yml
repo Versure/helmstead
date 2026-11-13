@@ -29,17 +29,72 @@ jobs:
         with:
           global-json-file: global.json
       - run: npm ci
+      # The secret-scan hook tests run the real pinned gitleaks. Tests never download (no network in tests), so it
+      # is fetched and checksum-verified here, the same way the hook does it.
+      - run: node tools/supply-chain/cli.mjs gitleaks-path
       # CI is set by GitHub, so verify.mjs runs every project here, not only the affected ones.
       - run: node scripts/sdlc/verify.mjs --base ${{ github.event.pull_request.base.sha || 'HEAD~1' }}
+        env:
+          # Makes the real-gitleaks hook tests mandatory instead of skipped when the binary is missing.
+          HELMSTEAD_REQUIRE_GITLEAKS: '1'
 
-  # Branch protection requires a check named `ci`. This job is that check: it is green only when the
-  # verify job passed on every OS, and it is red (not skipped) when any of them failed or was cancelled.
+  # Spec 003: the dependency policy. Licences offline, vulnerabilities online (npm audit and dotnet list package).
+  # Every high or critical advisory fails unless dependency-policy.json has a current exception for it.
+  dependency-policy:
+    name: dependency-policy
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+      # The checks read the lock file and the NuGet restore output; no npm install (and no install scripts) needed.
+      - run: dotnet restore apps/core/Helmstead.Core.slnx --nologo
+      - run: node tools/supply-chain/cli.mjs policy
+      - run: node tools/supply-chain/cli.mjs licenses
+      - run: node tools/supply-chain/cli.mjs vulnerabilities
+
+  # Spec 003: every commit of the PR is scanned, so a secret added and removed again still fails.
+  # The pinned gitleaks is downloaded and checksum-verified by the same code the commit hook uses.
+  secret-scan:
+    name: secret-scan
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Scan the commits of this change
+        env:
+          BASE: ${{ github.event.pull_request.base.sha || github.event.before }}
+          HEAD: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: |
+          if [ -z "$BASE" ] || [ "$BASE" = "0000000000000000000000000000000000000000" ]; then
+            node tools/supply-chain/cli.mjs secrets
+          else
+            node tools/supply-chain/cli.mjs secrets --log-opts "$BASE..$HEAD"
+          fi
+
+  # Branch protection requires a check named `ci`. This job is that check: it is green only when every job above
+  # succeeded (verify on every OS, dependency-policy and secret-scan), and red, not skipped, when any of them failed,
+  # was cancelled or was skipped. tools/workspace/ci-workflow.spec.ts checks this list and the test below.
   ci:
     name: ci
-    needs: verify
+    needs: [verify, dependency-policy, secret-scan]
     if: ${{ always() }}
     runs-on: ubuntu-latest
     steps:
-      - run: |
-          echo "verify result: ${{ needs.verify.result }}"
-          test "${{ needs.verify.result }}" = "success"
+      - env:
+          VERIFY: ${{ needs.verify.result }}
+          DEPENDENCY_POLICY: ${{ needs.dependency-policy.result }}
+          SECRET_SCAN: ${{ needs.secret-scan.result }}
+        run: |
+          echo "verify: $VERIFY, dependency-policy: $DEPENDENCY_POLICY, secret-scan: $SECRET_SCAN"
+          test "$VERIFY" = "success"
+          test "$DEPENDENCY_POLICY" = "success"
+          test "$SECRET_SCAN" = "success"
