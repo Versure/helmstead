@@ -4,7 +4,9 @@
       "Read(./.env)",
       "Read(./.env.*)",
       "Read(./**/secrets/**)",
-      "mcp__github__resolve_review_thread"
+      "mcp__github__resolve_review_thread",
+      "mcp__github__merge_pull_request",
+      "mcp__github__enable_pr_auto_merge"
     ]
   },
   "hooks": {
@@ -15,6 +17,16 @@
           {
             "type": "command",
             "command": "node \"$CLAUDE_PROJECT_DIR/scripts/sdlc/hooks/guard-shell.mjs\"",
+            "onFailure": "block"
+          }
+        ]
+      },
+      {
+        "matcher": "mcp__.*github.*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"$CLAUDE_PROJECT_DIR/scripts/sdlc/hooks/guard-github-mcp.mjs\"",
             "onFailure": "block"
           }
         ]

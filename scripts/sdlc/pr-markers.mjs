@@ -29,7 +29,46 @@ export function aiReviewPassSha(body) {
   return null;
 }
 
-/** A commit after the reviewed one may only touch spec files (the build sets `status: built` last). */
-export function onlySpecFiles(files) {
-  return files.every((f) => /^docs\/specs\/[^/]+\.md$/.test(f));
+/**
+ * What may follow the reviewed commit: nothing, or the build's last commit, which only flips one spec's
+ * `status:` line from `approved` to `built`. Takes the output of `git diff -U0 --no-renames <sha> <head>`.
+ */
+export function onlyStatusBuilt(diff) {
+  const files = new Set();
+  const removed = [];
+  const added = [];
+  for (const line of String(diff ?? '').split('\n')) {
+    const file = line.match(/^diff --git a\/(\S+) b\/(\S+)$/);
+    if (file) {
+      files.add(file[1]).add(file[2]);
+      continue;
+    }
+    if (/^(index |--- |\+\+\+ |@@ |new file mode|deleted file mode|old mode|new mode|similarity|rename |Binary )/.test(line)) {
+      if (/^(new file mode|deleted file mode|rename |Binary )/.test(line)) return false;
+      continue;
+    }
+    if (line.startsWith('-')) removed.push(line.slice(1));
+    else if (line.startsWith('+')) added.push(line.slice(1));
+  }
+  if (files.size === 0) return true;
+  const [file] = files;
+  return (
+    files.size === 1 &&
+    /^docs\/specs\/[^/]+\.md$/.test(file) &&
+    removed.length === 1 &&
+    added.length === 1 &&
+    /^status:\s*approved\b/.test(removed[0]) &&
+    /^status:\s*built\b/.test(added[0])
+  );
+}
+
+/**
+ * Only a PR from a branch in this repository, opened by someone with write access, can pass on the AI
+ * review alone. A fork PR, or an author GitHub does not list as owner, member or collaborator, waits for
+ * the owner whatever its description says.
+ */
+export function trustedAuthor(pr, repo) {
+  const sameRepo = pr?.head?.repo?.full_name === repo;
+  const association = String(pr?.author_association ?? '').toUpperCase();
+  return sameRepo && ['OWNER', 'MEMBER', 'COLLABORATOR'].includes(association);
 }

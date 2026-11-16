@@ -3,12 +3,13 @@
 // Sets the required `risk-gate` commit status on the PR head and decides on auto-merge:
 //   `human-approved` label (any risk)              -> success, auto-merge
 //   low risk + AI review pass for the head commit  -> success, auto-merge
+//     (only for a PR from this repository by an owner, member or collaborator; any other PR is high risk)
 //   anything else                                  -> failure, auto-merge off
 // New commits remove `human-approved`, so an approval always covers the code that merges.
 import { execFileSync } from 'node:child_process';
 import { appendFileSync, readFileSync } from 'node:fs';
 import { changedFiles, changedLines, classify, title } from './classify-risk.mjs';
-import { aiReviewPassSha, onlySpecFiles } from './pr-markers.mjs';
+import { aiReviewPassSha, onlyStatusBuilt, trustedAuthor } from './pr-markers.mjs';
 
 const APPROVED = 'human-approved';
 const FORCE_HIGH = 'needs-owner-review';
@@ -49,22 +50,30 @@ for (const m of body.matchAll(/<!--\s*risk:raise\s+([a-z,\s]+?)\s*-->/gi)) {
   }
 }
 if (labels.has(FORCE_HIGH)) result.categories.owner = [`label \`${FORCE_HIGH}\``];
+// Anyone can open a PR on a public repository and write any description, so the AI review marker only
+// counts on a PR from this repository by an author with write access. Any other PR waits for the owner.
+if (!trustedAuthor(pr, repo)) {
+  result.categories.owner ??= [];
+  result.categories.owner.push(`PR by ${pr.user?.login ?? 'unknown'} from ${pr.head?.repo?.full_name ?? 'a deleted fork'}`);
+}
 const high = Object.keys(result.categories).length > 0;
 const approved = labels.has(APPROVED);
 
 // The AI review pass names the commit it covered. It counts only for the PR head, or for an ancestor
-// of it when everything after that commit is spec files (the `status: built` commit). Any other push
-// after the review leaves the PR without a pass until /build reviews it and updates the marker.
+// of it when the only change after it is one spec's `status:` line going from approved to built (the
+// build's last commit). Any other push after the review leaves the PR without a pass until /build
+// reviews it and updates the marker.
 const passSha = aiReviewPassSha(body);
 let aiReviewed = false;
-let aiReviewNote = 'the AI review pass marker is missing';
+let aiReviewNote = 'the AI review pass marker is missing (it must be among the last lines, below any footer)';
 if (passSha) {
   try {
     execFileSync('git', ['merge-base', '--is-ancestor', passSha, head]);
-    const after = execFileSync('git', ['diff', '--name-only', '--no-renames', passSha, head], { encoding: 'utf8' })
-      .split('\n')
-      .filter(Boolean);
-    aiReviewed = onlySpecFiles(after);
+    const after = execFileSync('git', ['diff', '-U0', '--no-renames', '--no-color', passSha, head], {
+      encoding: 'utf8',
+      maxBuffer: 64 * 1024 * 1024,
+    });
+    aiReviewed = onlyStatusBuilt(after);
     if (!aiReviewed) aiReviewNote = `commits after the reviewed ${passSha.slice(0, 7)} were not reviewed`;
   } catch {
     aiReviewNote = `the reviewed commit ${passSha.slice(0, 7)} is not in this PR's history`;

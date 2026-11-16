@@ -51,7 +51,8 @@ $ node scripts/sdlc/verify.mjs
 
 <!--
 Markers added by /build below this comment as the last lines of the description, one HTML comment per
-line and nothing after them. The risk gate reads markers only there.
+line and nothing after them: any footer or attribution goes above this comment. The risk gate reads
+markers only in the last lines.
   <!- - risk:raise <category> - ->    one per category the path rules missed
                                      (security, architecture, data, pipeline, review)
   <!- - ai-review-head: <sha> - ->    for the next /build round: the last commit the AI review covered
