@@ -29,7 +29,8 @@ if (event === 'APPROVE') {
 }
 // Labels: look only at the fields that set them (`labels` on any tool, and `label`/`name` on a label
 // tool), so a PR description or comment that merely mentions a label is fine.
-const labelTool = /label/i.test(name) || /label/i.test(method);
+const readOnly = /^(get|list|search)_/.test(name) || /^(get|list|search)/.test(method);
+const labelTool = !readOnly && (/label/i.test(name) || /label/i.test(method));
 const labelValues = [args.labels, labelTool ? args.label : undefined, labelTool ? args.name : undefined]
   .flat()
   .filter((v) => v !== undefined && v !== null)

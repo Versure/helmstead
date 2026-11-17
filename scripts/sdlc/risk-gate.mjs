@@ -34,31 +34,55 @@ const tryGh = (...args) => {
 const base = pr.base.sha;
 const head = pr.head.sha;
 
-// The owner's approval covers one commit. When the owner adds the label, this run records it as an
-// `owner-approval` status on the commit the PR had at that moment, posted by the workflow's bot. The
-// label then counts only on a head that carries that status, so a push after the approval needs a new
-// one: the label is removed and the PR waits. Event payloads are snapshots and runs can cancel each
-// other, so the label alone is never trusted.
+// The owner's approval covers one commit, and the newest decision about that commit wins.
+// - The owner (or an admin) adds the label: this run posts an `owner-approval` success status on the
+//   commit the PR had at that moment, naming the commit.
+// - Anyone else adds it, or anyone removes it: this run posts a failure status, so an approval that was
+//   withdrawn stays withdrawn, whoever adds the label next.
+// The gate then reads only the newest `owner-approval` status posted by the workflow's bot on the head.
+// The label alone is never trusted: event payloads are snapshots and runs can overlap. Label events run
+// in their own concurrency group (risk-gate.yml), so another event cannot cancel them before they post.
 const APPROVAL_CONTEXT = 'owner-approval';
 const BOT = 'github-actions[bot]';
-if (event.action === 'labeled' && event.label?.name === APPROVED) {
+const short = head.slice(0, 7);
+const postApproval = (state, description) =>
+  gh('api', '-X', 'POST', `repos/${repo}/statuses/${head}`,
+    '-f', `state=${state}`, '-f', `context=${APPROVAL_CONTEXT}`, '-f', `description=${description.slice(0, 140)}`);
+if (event.label?.name === APPROVED && event.action === 'labeled') {
   const sender = event.sender?.login ?? '';
   const isOwner = sender !== '' && sender === event.repository?.owner?.login;
   const permission = isOwner ? 'admin' : tryGh('api', `repos/${repo}/collaborators/${sender}/permission`, '-q', '.permission')?.trim();
-  if (permission === 'admin') {
-    gh('api', '-X', 'POST', `repos/${repo}/statuses/${head}`,
-      '-f', 'state=success', '-f', `context=${APPROVAL_CONTEXT}`, '-f', `description=Approved by ${sender}`);
-  }
+  if (permission === 'admin') postApproval('success', `${short} approved by ${sender}`);
+  else postApproval('failure', `Label added by ${sender || 'unknown'}, who cannot approve`);
 }
-const approvalOnHead = () => {
-  const statuses = JSON.parse(tryGh('api', `repos/${repo}/commits/${head}/statuses?per_page=100`) ?? '[]');
-  return statuses.some((s) => s.context === APPROVAL_CONTEXT && s.state === 'success' && s.creator?.login === BOT);
+if (event.label?.name === APPROVED && event.action === 'unlabeled') {
+  postApproval('failure', `Approval of ${short} withdrawn by ${event.sender?.login ?? 'unknown'}`);
+}
+
+// Newest `owner-approval` status by the bot on the head: 'success', 'failure', 'none', or null when it
+// could not be read. `--paginate` reads every page; GitHub lists statuses newest first.
+const readApproval = () => {
+  const out = tryGh('api', '--paginate', `repos/${repo}/commits/${head}/statuses`,
+    '--jq', `.[] | select(.context == "${APPROVAL_CONTEXT}" and .creator.login == "${BOT}") | .state`);
+  if (out === null) return null;
+  return out.split('\n').find(Boolean) ?? 'none';
 };
 
 const labels = new Set(pr.labels.map((l) => l.name));
-if (labels.has(APPROVED) && !approvalOnHead()) {
-  tryGh('pr', 'edit', String(pr.number), '--repo', repo, '--remove-label', APPROVED);
-  labels.delete(APPROVED);
+let approvalNote = '';
+if (labels.has(APPROVED)) {
+  const approval = readApproval();
+  if (approval === null) {
+    // Fail safe, but keep the owner's label: the read failed, not the approval.
+    labels.delete(APPROVED);
+    approvalNote = 'could not read the owner approval; re-run the gate';
+  } else if (approval !== 'success') {
+    tryGh('pr', 'edit', String(pr.number), '--repo', repo, '--remove-label', APPROVED);
+    labels.delete(APPROVED);
+    approvalNote = approval === 'none'
+      ? `the approval label is not for ${short}; add it again to approve this commit`
+      : `the approval of ${short} was withdrawn or not given by the owner`;
+  }
 }
 
 execFileSync('git', ['fetch', '--no-tags', 'origin', `+refs/pull/${pr.number}/head:refs/remotes/pr/head`]);
@@ -107,7 +131,7 @@ const names = Object.keys(result.categories).map(title).join(', ');
 let state;
 let description;
 if (approved) [state, description] = ['success', high ? `High risk (${names}), approved by owner` : 'Low risk, approved by owner'];
-else if (high) [state, description] = ['failure', `Needs owner review: ${names}. Add label ${APPROVED} when done.`];
+else if (high) [state, description] = ['failure', approvalNote ? `Needs owner review: ${approvalNote}.` : `Needs owner review: ${names}. Add label ${APPROVED} when done.`];
 else if (aiReviewed) [state, description] = ['success', 'Low risk, AI review passed'];
 else [state, description] = ['failure', `Low risk, but ${aiReviewNote}. Re-run /build, or add label ${APPROVED}.`];
 

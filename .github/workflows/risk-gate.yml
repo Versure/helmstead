@@ -17,9 +17,12 @@ permissions:
   issues: write
   statuses: write
 
+# Approval label events get their own group, so a description edit or another label cannot cancel the
+# run that records (or withdraws) the owner's approval. Label add and remove still share one group, in
+# order: the newest decision wins.
 concurrency:
-  group: risk-gate-${{ github.event.pull_request.number }}
-  cancel-in-progress: true
+  group: risk-gate-${{ github.event.pull_request.number }}${{ (github.event.action == 'labeled' || github.event.action == 'unlabeled') && github.event.label.name == 'human-approved' && '-approval' || '' }}
+  cancel-in-progress: ${{ !((github.event.action == 'labeled' || github.event.action == 'unlabeled') && github.event.label.name == 'human-approved') }}
 
 jobs:
   classify:
