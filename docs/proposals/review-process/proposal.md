@@ -14,18 +14,18 @@ rounds, either clean or with the approach handed back to the owner.
 1. *Vote on every finding; fix only the ones agreed real.* Every finding goes to three independent
    voters with different checks; two "real" votes confirm it. Only confirmed findings are fixed.
 2. *Improve review based on the post.* Adopted: separate find and vote steps; evidence required for
-   every finding; a shared severity scale and a "what failure looks like here" file (`REVIEW.md`);
-   style dropped; Important / Nit / Pre-existing tags; fix the class, not the instance; diff-only
-   re-review; no repeats; a three-round cap that ends in reconsidering the approach; a general bug
-   reviewer on every change. Not adopted here: see Out of scope.
+   every finding; a shared severity scale and a "what failure looks like here" file
+   (`.claude/REVIEW.md`); style dropped; Important / Nit / Pre-existing tags; fix the class, not the
+   instance; diff-only re-review; no repeats; a three-round cap that ends in reconsidering the
+   approach; a general bug reviewer on every change. Not adopted here: see Out of scope.
 
 ## In scope
 
 - The review step of `/build` (step 4), the PR description's AI review section, and the follow-up
   round (`/build NNN address the PR comments`).
 - The reviewer agents' input and output, a new voter agent, a new general bug reviewer.
-- `REVIEW.md`: severity scale, evidence rule, what to skip.
-- One line in `CLAUDE.md` so ad-hoc agent reviews follow `REVIEW.md` too.
+- `.claude/REVIEW.md`: severity scale, evidence rule, what to skip, the loop rules.
+- One line in `CLAUDE.md` so ad-hoc agent reviews follow `.claude/REVIEW.md` too.
 
 ## Out of scope (logged, not changed)
 
@@ -46,7 +46,8 @@ location, the claim, **evidence** (the file and line, or a concrete scenario tha
 the bug class. No evidence, no finding. Style, naming, formatting and "could be cleaner" are not
 findings.
 
-Severity, defined once in `REVIEW.md`:
+Severity, defined once in `.claude/REVIEW.md` (under `.claude/`, so a change to the rules is
+always high risk and seen by the owner):
 
 - **blocker**: merging breaks main or the build, loses or exposes data, opens a reachable security
   hole, or fails an acceptance criterion.
@@ -54,50 +55,58 @@ Severity, defined once in `REVIEW.md`:
   untrue (for an instruction file, failure is "it misdirects the next agent").
 - **minor**: real but unlikely or cheap: an edge case, a small inconsistency.
 
-Origin: **introduced** (the change causes it) or **pre-existing** (it was there on `main`).
+Origin: **introduced** (the change causes it, wherever the affected line is) or **pre-existing**
+(it was there on `main`). Scope: a finding is **out of scope** only when it asks for something the
+spec does not require (new behaviour, extra hardening). A defect the change introduces is never
+out of scope.
 
 ### One round
 
 1. **Find.** The reviewers run in parallel on the round's diff (see Rounds). `bug-reviewer` and
    `spec-reviewer` always; the security, architecture and data reviewers when their area is touched,
-   as today.
-2. **Collect.** The build numbers the findings, merges exact duplicates (same location, same claim)
-   and drops any that repeat a ledger entry, recording each drop in the ledger. It does not judge
-   whether a finding is right.
+   as today. Reviewers get the ledger and do not re-raise a decided finding unless they have new
+   evidence (for example, that a fix did not work).
+2. **Collect.** The build numbers the findings and merges exact duplicates (same location, same
+   claim). It drops nothing else and does not judge whether a finding is right.
 3. **Vote.** Three voter agents, one per check (evidence, refute, impact), each vote on every
-   finding of the round. Each voter sees the findings, the diff, the spec, `REVIEW.md` and the
-   ledger; never another voter's vote nor the build's opinion. A voter gets at most eight findings;
-   more are split into batches, each batch with its own three voters.
+   finding of the round. Each voter sees the findings, the diff, the spec, `.claude/REVIEW.md` and
+   the ledger; never another voter's vote nor the build's opinion. A finding that repeats a ledger
+   entry with no new evidence is voted not-real. A voter gets at most eight findings; more are split
+   into batches, each batch with its own three voters.
 4. **Decide**, mechanically:
-   - **Confirmed** when at least two of three vote real. A missing or unreadable vote counts as
-     unsure, and unsure is not real.
+   - A voter that fails or answers in the wrong format is run once more. If a finding still lacks
+     three valid votes, it is **open** (owner decides), not rejected.
+   - **Confirmed** when at least two of three vote real. Unsure is not real.
    - Severity: the median of the three votes, where not-real or unsure counts as below minor.
    - Origin and scope: what the majority says.
-   - **Security safety net.** A security finding (from `security-reviewer`, or tagged security)
-     that the reporter rated blocker or major and that got exactly one real vote is not fixed, but
-     is listed under Owner review focus and the PR gets `<!-- risk:raise security -->`, so the owner
-     sees it. This uses the gate as it is.
+   - **Security findings** (from `security-reviewer`, or tagged security): a confirmed one keeps the
+     severity its finder gave. One with exactly one real vote is not fixed, but is listed under
+     Owner review focus and the PR gets `<!-- risk:raise security -->`, so the owner sees it. This
+     uses the gate as it is.
 5. **Act** on confirmed findings only:
-   - introduced, in scope, blocker or major: fix it, every instance of its class, with the smallest
-     change. If the fix needs something the spec does not cover (a new script, hook, workflow, file
-     format or stored state, or any choice about the domain model, storage, security or a public
-     contract), do not build it: it becomes an **open finding** for the owner.
-   - introduced minor: fix it if it is a local edit; otherwise list it as a Nit.
-   - pre-existing, or outside the spec's scope: do not fix. List it under Pre-existing / Out of
-     scope; a pre-existing blocker also goes under Open findings so the owner sees it.
+   - introduced blocker or major: fix it, every instance of its class, with the smallest change. If
+     the fix needs something the spec does not cover (a new script, hook, workflow, file format or
+     stored state, or any choice about the domain model, storage, security or a public contract),
+     do not build it: it becomes an **open finding** for the owner.
+   - introduced minor: fix it if it is a local edit and this is not round 3; otherwise list it as a
+     Nit.
+   - pre-existing, or out of scope: do not fix. List it under Pre-existing / Out of scope; a
+     pre-existing blocker also goes under Open findings so the owner sees it.
    - rejected: record it with its votes. Nothing else.
 6. **Verify and commit** the fixes (`verify.mjs`), then update the ledger.
 
 ### Rounds
 
 - **Round 1** reviews the branch diff (`origin/main...HEAD`).
-- **Rounds 2 and 3** run only if the previous round committed fixes. They review only those fix
+- **Rounds 2 and 3** run whenever the previous round committed a fix, and review only those fix
   commits (`<last reviewed commit>..HEAD`), with `bug-reviewer` plus the reviewers whose area the fix
-  diff touches. A finding on code the fix diff did not change is out of scope for that round.
-- **Agreed** when a round confirms no blocker or major finding to fix.
-- **Cap.** If round 3 still confirms an introduced blocker or major, stop patching. Open the PR as a
-  **draft**, without the pass marker, with a "Reconsider the approach" section naming the bug
-  classes that kept coming back, and tell the owner. A draft never auto-merges.
+  diff touches. A finding counts in these rounds when the fix diff caused it, wherever the affected
+  line is; its evidence must point to the line in the fix diff that causes it.
+- The loop ends when a round commits no fix. Round 3 fixes no minors, so every fix is reviewed.
+- **Cap.** If round 3 still confirms an introduced blocker or major, stop patching: no pass marker,
+  the PR is (or is turned back into) a **draft** with `gh pr ready --undo`, and it gets a
+  "Reconsider the approach" section naming the bug classes that kept coming back. Tell the owner.
+  A draft never auto-merges.
 
 ### The ledger
 
@@ -110,33 +119,40 @@ line: `Reviewed up to: <sha>`. The gate never reads the ledger; only `/build` do
 
 ### Pass marker
 
-`<!-- ai-review: pass -->` is added only when no confirmed introduced blocker or major is open and
-the loop did not stop at the cap. Pre-existing findings, nits and rejected findings do not block.
+`<!-- ai-review: pass -->` is added only when no confirmed introduced blocker or major and no
+unvoted finding is open, and the loop did not stop at the cap. Pre-existing findings, nits and
+rejected findings do not block. A run that cannot add the marker removes any earlier one from the
+description **before** it pushes.
 
 ### Follow-up runs
 
-`/build NNN address the PR comments` treats the owner's comments as requirements, as today. It
-reads the ledger and reviews only the commits after `Reviewed up to`; if that commit is no longer an
-ancestor (after a rebase) it reviews the whole branch, still with the ledger. Each run has its own
-three-round cap: a run starts only when the owner asks, which is the human brake on the loop.
+`/build NNN address the PR comments` treats the owner's comments as requirements, as today, and
+takes the ledger from the PR description. Before step 1 rebases, it notes the commits after
+`Reviewed up to` (normally none). Its round 1 reviews only those commits (as rebased) and the
+commits it adds itself, from the head right after the rebase; it never falls back to the whole
+branch. Each run has its own three-round cap: a run starts only when the owner asks, which is the
+human brake on the loop.
 
 ### Ad-hoc reviews
 
-`CLAUDE.md` gets one line: when an agent reviews its own work outside `/build`, it follows the
-find, vote, decide, round and cap rules in `REVIEW.md`. That is the loop that failed.
+`CLAUDE.md` gets one line: when an agent reviews its own work outside `/build`, it follows
+`.claude/REVIEW.md`. That file says what replaces the `/build` parts there: the task as the user
+stated it is the scope, written at the top of the ledger before round 1; the ledger is a file in
+the session; at the cap the agent stops and reports to the user with "Reconsider the approach"
+instead of opening a draft. That is the loop that failed.
 
 ## Files changed when built
 
 | File | Change |
 |---|---|
-| `REVIEW.md` (new) | Severity scale, evidence rule, what to skip, origin and scope, round and cap rules |
+| `.claude/REVIEW.md` (new) | Severity scale, evidence rule, what to skip, origin and scope, round and cap rules, ad-hoc variant |
 | `.claude/agents/finding-verifier.md` (new) | The voter, one check per run |
 | `.claude/agents/bug-reviewer.md` (new) | General correctness reviewer, every change |
-| `.claude/agents/{spec,security,architecture,data}-reviewer.md` | New finding format; read `REVIEW.md` and the ledger |
-| `.claude/skills/build/SKILL.md` | Step 4 replaced by the loop above; step 1 follow-up reads the ledger; step 6 ledger and pass rule |
-| `.github/pull_request_template.md` | AI review section: the ledger table and `Reviewed up to` |
+| `.claude/agents/{spec,security,architecture,data}-reviewer.md` | New finding format; read `.claude/REVIEW.md` and the ledger |
+| `.claude/skills/build/SKILL.md` | Step 4 replaced by the loop above; step 1 follow-up range and ledger; step 6 ledger, the new pass rule and marker removal before push |
+| `.github/pull_request_template.md` | AI review section: the ledger table and `Reviewed up to`; the marker comment states the new pass rule |
 | `docs/sdlc.md` | Section 2 and 4 describe the vote and the cap in a few lines |
-| `CLAUDE.md` | One line pointing ad-hoc reviews at `REVIEW.md` |
+| `CLAUDE.md` | One line pointing ad-hoc reviews at `.claude/REVIEW.md` |
 
 No script, hook, workflow, label or gate change. The change is high risk (pipeline paths), so the
 owner reviews it.
