@@ -100,3 +100,26 @@ Finders: convergence, repo fit. 9 findings, 2 pairs of duplicates merged, leavin
 Result: **no confirmed blocker or major → proposal agreed.** The three confirmed minors are not
 patched (last-round rule: no unreviewed fixes); they are listed in the proposal under "Open nits
 for the spec".
+
+## Review team, round 1 (full `review-team.md`; proposal treated as agreed)
+
+Finders: voting soundness, implementability, proportion. 18 findings, merged to 14.
+
+| ID | Finding | Votes | Verdict | Change |
+|---|---|---|---|---|
+| T1-T1 | Finders and voters aren't told the round or first-run/follow-up, yet apply round-dependent rules | R R R | major | Both inputs now include round number and run type |
+| T1-T2 | Ledger drops class and instance list | R N N | rejected | — |
+| T1-T3 | Security rules key on the `security:` flag, not on `security-reviewer` as source | R R R | major | Security finding defined as either; orchestrator sets the flag on all `security-reviewer` findings |
+| T1-T4 | Ad-hoc variant has no orchestrator or inputs | R N N | rejected | — (covered by `.claude/REVIEW.md`) |
+| T1-T5 | Rule 6 omits "non-local minor → nit" | R R R | minor | Added |
+| T1-T6 | Not-real voters must guess origin/scope; dead tie clause | R N N | rejected | — |
+| T1-T7 | `risk.json` not recomputed per round, so all area reviewers rerun | R R R | minor | Rounds 2–3 classify the fix diff into `.sdlc/round-risk.json` |
+| T1-T8 | `bug-reviewer` and `spec-reviewer` overlap → double findings | R N N | rejected | — |
+| T1-T9 | No cap on findings per finder | R N N | rejected | — |
+| T1-T10 | Multi-instance finding with only some instances real | R R R | minor | Real if any instance is; instances two voters reject are not fixed |
+| T1-T11 | `spec-reviewer` later-round trigger not mechanical | R N N | rejected | — |
+| T1-T12 | Evidence check is near-automatic "real" | N N R | rejected | — |
+| T1-T13 | Ledger shows earlier votes to voters | R N N | rejected | — |
+| T1-T14 | Voters see finder's severity/origin → anchoring | R N N | rejected | — |
+
+Result: 2 confirmed major, 3 confirmed minor → revise, round 2.
