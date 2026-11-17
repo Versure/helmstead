@@ -1,0 +1,20 @@
+{
+  "licenses": { "shipped": ["MIT"], "tooling": ["MPL-2.0"] },
+  "licenseExceptions": [
+    {
+      "ecosystem": "npm",
+      "package": "svg-tags",
+      "versionRange": "1.0.0",
+      "reason": "MIT licence text in the repository, not declared in package.json."
+    }
+  ],
+  "vulnerabilityExceptions": [
+    {
+      "ecosystem": "nuget",
+      "package": "Some.Package",
+      "advisory": "GHSA-aaaa-bbbb-cccc",
+      "reason": "Only reachable from a test helper we never run.",
+      "expires": "2030-01-31"
+    }
+  ]
+}

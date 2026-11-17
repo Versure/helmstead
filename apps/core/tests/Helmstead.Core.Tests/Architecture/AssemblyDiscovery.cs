@@ -20,14 +20,18 @@ public static class AssemblyDiscovery
         [.. Directory.EnumerateFiles(AppContext.BaseDirectory, "Helmstead.*.dll").Select(Path.GetFileNameWithoutExtension).OfType<string>()];
 
     /// <summary>The project folders under <c>apps/core/src</c>, found from the solution file upwards from the test output.</summary>
-    public static IReadOnlyList<string> SourceProjectNames()
+    public static IReadOnlyList<string> SourceProjectNames() =>
+        [.. Directory.EnumerateFiles(Path.Combine(CoreDirectory(), "src"), "*.csproj", SearchOption.AllDirectories)
+            .Select(Path.GetFileNameWithoutExtension).OfType<string>()];
+
+    /// <summary>The folder of <c>Helmstead.Core.slnx</c>, found upwards from the test output.</summary>
+    public static string CoreDirectory()
     {
         for (var directory = new DirectoryInfo(AppContext.BaseDirectory); directory is not null; directory = directory.Parent)
         {
             if (File.Exists(Path.Combine(directory.FullName, "Helmstead.Core.slnx")))
             {
-                return [.. Directory.EnumerateFiles(Path.Combine(directory.FullName, "src"), "*.csproj", SearchOption.AllDirectories)
-                    .Select(Path.GetFileNameWithoutExtension).OfType<string>()];
+                return directory.FullName;
             }
         }
 

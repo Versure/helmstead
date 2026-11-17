@@ -1,0 +1,3 @@
+# Reviewed gitleaks false positives, one fingerprint per line (file:rule-id:line, or commit:file:rule-id:line).
+# The hook and the CI scan print the fingerprint of each finding. Every entry is a high-risk change: add a comment
+# line above it saying why it is not a secret.

@@ -1,0 +1,64 @@
+{
+  "version": 1,
+  "parameters": "--vulnerable --include-transitive",
+  "sources": ["https://api.nuget.org/v3/index.json"],
+  "projects": [
+    {
+      "path": "/repo/apps/core/src/Helmstead.Core.Api/Helmstead.Core.Api.csproj",
+      "frameworks": [
+        {
+          "framework": "net10.0",
+          "topLevelPackages": [
+            {
+              "id": "Fixture.Critical",
+              "requestedVersion": "1.0.0",
+              "resolvedVersion": "1.0.0",
+              "vulnerabilities": [
+                {
+                  "severity": "Critical",
+                  "advisoryurl": "https://github.com/advisories/GHSA-crit-0000-0001"
+                }
+              ]
+            }
+          ],
+          "transitivePackages": [
+            {
+              "id": "Fixture.Transitive",
+              "resolvedVersion": "4.1.0",
+              "vulnerabilities": [
+                {
+                  "severity": "High",
+                  "advisoryurl": "https://github.com/advisories/GHSA-high-0000-0002"
+                },
+                {
+                  "severity": "Moderate",
+                  "advisoryurl": "https://github.com/advisories/GHSA-mode-0000-0003"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "path": "/repo/apps/core/tests/Helmstead.Core.Tests/Helmstead.Core.Tests.csproj",
+      "frameworks": [
+        {
+          "framework": "net10.0",
+          "transitivePackages": [
+            {
+              "id": "Fixture.Transitive",
+              "resolvedVersion": "4.1.0",
+              "vulnerabilities": [
+                {
+                  "severity": "High",
+                  "advisoryurl": "https://github.com/advisories/GHSA-high-0000-0002"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

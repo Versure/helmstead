@@ -1,0 +1,44 @@
+{
+  "$schema": "./tools/supply-chain/dependency-policy.schema.json",
+  "$comment": "What dependencies may be. See docs/adr/005-supply-chain-policy.md. Every change to this file is high risk and waits for the owner. Licence exceptions need a reason; vulnerability exceptions also need an expiry date (YYYY-MM-DD).",
+  "licenses": {
+    "shipped": [
+      "MIT",
+      "Apache-2.0",
+      "BSD-2-Clause",
+      "BSD-3-Clause",
+      "ISC",
+      "0BSD",
+      "Unlicense"
+    ],
+    "tooling": [
+      "MPL-2.0",
+      "BlueOak-1.0.0",
+      "MIT-0",
+      "CC0-1.0",
+      "CC-BY-4.0",
+      "Python-2.0"
+    ]
+  },
+  "licenseExceptions": [
+    {
+      "ecosystem": "npm",
+      "package": "svg-tags",
+      "versionRange": "1.0.0",
+      "reason": "Declares its licence only in the deprecated \"licenses\" array (MIT), which the lock file does not record. The LICENSE file in the published package is the MIT licence (Copyright (c) 2014 Athan Reines). Tooling only (via stylelint)."
+    },
+    {
+      "ecosystem": "npm",
+      "package": "union",
+      "versionRange": "0.5.0",
+      "reason": "package.json declares no licence. The LICENSE file in the published package is the MIT licence text (Copyright (c) 2010 Charlie Robbins & the Contributors). Tooling only (via @nx/web > http-server)."
+    },
+    {
+      "ecosystem": "nuget",
+      "package": "xunit.abstractions",
+      "versionRange": "2.0.3",
+      "reason": "The nuspec has only a licenseUrl (https://raw.githubusercontent.com/xunit/xunit/master/license.txt), which is the xUnit.net Apache-2.0 licence. Test-only (via xunit)."
+    }
+  ],
+  "vulnerabilityExceptions": []
+}

@@ -1,0 +1,84 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://helmstead.local/schemas/dependency-policy.schema.json",
+  "title": "Helmstead dependency policy",
+  "description": "Allowed licences per tier and the reviewed exceptions. See docs/adr/005-supply-chain-policy.md. Validated by tools/supply-chain/policy.mjs, which implements the subset of JSON Schema used here.",
+  "type": "object",
+  "required": ["licenses", "licenseExceptions", "vulnerabilityExceptions"],
+  "additionalProperties": false,
+  "properties": {
+    "$schema": { "type": "string" },
+    "$comment": { "type": "string" },
+    "licenses": {
+      "type": "object",
+      "required": ["shipped", "tooling"],
+      "additionalProperties": false,
+      "properties": {
+        "shipped": {
+          "description": "SPDX identifiers allowed for packages that ship with Helmstead (npm without dev: true, non-test NuGet).",
+          "type": "array",
+          "items": { "$ref": "#/$defs/spdxId" },
+          "minItems": 1,
+          "uniqueItems": true
+        },
+        "tooling": {
+          "description": "SPDX identifiers allowed in addition to `shipped` for build, lint and test dependencies.",
+          "type": "array",
+          "items": { "$ref": "#/$defs/spdxId" },
+          "uniqueItems": true
+        }
+      }
+    },
+    "licenseExceptions": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["ecosystem", "package", "versionRange", "reason"],
+        "additionalProperties": false,
+        "properties": {
+          "ecosystem": { "$ref": "#/$defs/ecosystem" },
+          "package": { "$ref": "#/$defs/nonEmpty" },
+          "versionRange": {
+            "description": "An exact version, `*`, or a comparator set such as `>=1.0.0 <2.0.0`.",
+            "type": "string",
+            "pattern": "^(\\*|(?:[<>]=?|=)?\\d+\\.\\d+\\.\\d+(?:[-+][0-9A-Za-z.+-]+)?(?: (?:[<>]=?|=)?\\d+\\.\\d+\\.\\d+(?:[-+][0-9A-Za-z.+-]+)?)*)$"
+          },
+          "reason": { "$ref": "#/$defs/reason" }
+        }
+      }
+    },
+    "vulnerabilityExceptions": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["ecosystem", "package", "advisory", "reason", "expires"],
+        "additionalProperties": false,
+        "properties": {
+          "ecosystem": { "$ref": "#/$defs/ecosystem" },
+          "package": { "$ref": "#/$defs/nonEmpty" },
+          "advisory": {
+            "description": "The advisory ID as the audit tool reports it, for example GHSA-xxxx-xxxx-xxxx.",
+            "$ref": "#/$defs/nonEmpty"
+          },
+          "reason": { "$ref": "#/$defs/reason" },
+          "expires": {
+            "description": "ISO date (YYYY-MM-DD). After this date the exception fails the check, even when the advisory is gone.",
+            "type": "string",
+            "pattern": "^\\d{4}-(0[1-9]|1[0-2])-(0[1-9]|[12]\\d|3[01])$"
+          }
+        }
+      }
+    }
+  },
+  "$defs": {
+    "ecosystem": { "type": "string", "enum": ["npm", "nuget"] },
+    "nonEmpty": { "type": "string", "minLength": 1, "pattern": "\\S" },
+    "reason": {
+      "description": "Why the exception is acceptable. Reviewed by the owner (every exception is a high-risk change).",
+      "type": "string",
+      "minLength": 10,
+      "pattern": "\\S"
+    },
+    "spdxId": { "type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9.+-]*$" }
+  }
+}

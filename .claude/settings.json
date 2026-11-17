@@ -15,6 +15,12 @@
             "type": "command",
             "command": "node \"$CLAUDE_PROJECT_DIR/scripts/sdlc/hooks/guard-shell.mjs\"",
             "onFailure": "block"
+          },
+          {
+            "type": "command",
+            "command": "node \"$CLAUDE_PROJECT_DIR/scripts/sdlc/hooks/scan-secrets.mjs\"",
+            "timeout": 180,
+            "onFailure": "block"
           }
         ]
       }

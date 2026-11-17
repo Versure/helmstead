@@ -1,0 +1,19 @@
+<Project>
+  <!-- A Directory.Build.props stops MSBuild from looking further up, so the core-wide settings are imported first. -->
+  <Import Project="$([MSBuild]::GetPathOfFileAbove('Directory.Build.props', '$(MSBuildThisFileDirectory)../'))" />
+
+  <!-- Spec 003, docs/adr/005-supply-chain-policy.md: tests do not reach the network.
+       Every test project gets the module initializer in Shared/NoNetwork.cs, which points HttpClient.DefaultProxy at
+       an unreachable loopback proxy. The architecture test NetworkRulesTests checks that each *.Tests project has it,
+       and its ArchUnitNET rule forbids the ways around it. Changing this file is high risk. -->
+  <ItemGroup Condition="'$(IsTestProject)' == 'true' Or $(MSBuildProjectName.EndsWith('.Tests'))">
+    <Compile Include="$(MSBuildThisFileDirectory)Shared/NoNetwork.cs" Link="Shared/NoNetwork.cs" />
+  </ItemGroup>
+
+  <!-- Tests that need a live API carry [Trait("Category", "Live")]. Every `dotnet test` run leaves them out (dotnet
+       test reads this property as its default filter; an explicit filter on the command line replaces it) unless
+       HELMSTEAD_LIVE_TESTS=1, which also lifts the network guard. No workflow sets that variable. -->
+  <PropertyGroup Condition="'$(HELMSTEAD_LIVE_TESTS)' != '1' And '$(VSTestTestCaseFilter)' == ''">
+    <VSTestTestCaseFilter>Category!=Live</VSTestTestCaseFilter>
+  </PropertyGroup>
+</Project>

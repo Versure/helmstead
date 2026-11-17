@@ -178,6 +178,7 @@ describe('the workspace', () => {
       'Helmstead.Connectors.FixtureB',
       'Helmstead.Core.Api.Fixture',
       'Helmstead.Providers.Fixture',
+      'Helmstead.Tests.NetworkFixture',
       'Helmstead.Web.Fixture',
       'api-contracts',
       'core',

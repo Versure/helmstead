@@ -1,0 +1,13 @@
+{
+  "version": 1,
+  "parameters": "--vulnerable --include-transitive",
+  "sources": ["https://api.nuget.org/v3/index.json"],
+  "projects": [
+    {
+      "path": "/repo/apps/core/src/Helmstead.Core.Api/Helmstead.Core.Api.csproj"
+    },
+    {
+      "path": "/repo/apps/core/tests/Helmstead.Core.Tests/Helmstead.Core.Tests.csproj"
+    }
+  ]
+}

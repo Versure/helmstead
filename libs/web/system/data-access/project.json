@@ -24,7 +24,15 @@
     "test": {
       "executor": "@nx/angular:unit-test",
       "options": {
-        "watch": false
+        "watch": false,
+        "setupFiles": ["tools/testing/no-network.ts"],
+        "exclude": ["**/*.live.spec.ts"]
+      },
+      "configurations": {
+        "live": {
+          "include": ["**/*.live.spec.ts"],
+          "exclude": []
+        }
       }
     }
   }
