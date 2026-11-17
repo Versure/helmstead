@@ -124,6 +124,15 @@ is always `in-scope`.
 
 Votes are in check order (evidence, refute, impact): R real, N not-real, U unsure.
 
+## Not agreed: one open decision
+
+The final check confirmed one major finding (TF-X1 in `review-log.md`): the area-reviewer rule
+above picks reviewers from the whole-branch classification, while the agreed proposal says later
+rounds run "the reviewers whose area the fix diff touches". Recommended resolution, for the owner
+to approve because it amends the agreed proposal: later rounds run `bug-reviewer` plus the area
+reviewers chosen as in round 1, from `.sdlc/risk.json` rewritten before each round (this also
+closes TF-X2).
+
 ## Open nits for the spec
 
 Confirmed minor findings from the last review round, left for `/spec` to settle (see

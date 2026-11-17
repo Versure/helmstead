@@ -170,3 +170,21 @@ The instance class (T1-T10 → T2-U4/U5 → T3-W1/W2) produced only minors in ro
 last-round rule they are not patched; they are listed as open nits in `review-team.md`.
 
 The reconsidered text was checked once more as a final round (below).
+
+## Review team, final check of the reconsidered approach
+
+Finders: repo fit, consistency. Both reported the same 2 findings.
+
+| ID | Finding | Votes | Verdict |
+|---|---|---|---|
+| TF-X1 | Whole-branch area-reviewer choice contradicts the agreed proposal ("reviewers whose area the fix diff touches") | R R R | major |
+| TF-X2 | `risk.json` written only before round 1, so a fix that first enters a category (e.g. a dependency) gets no area reviewer | R R R | minor |
+
+Result: **not agreed.** The reconsidered approach still has a confirmed major. It is not patched
+further. Closing it means changing the already agreed proposal, which is the owner's call:
+
+- Recommended: amend the proposal's Rounds line to "`bug-reviewer` plus the area reviewers chosen
+  as in round 1, from the branch classification rewritten before each round". One sentence in each
+  file; it also closes TF-X2, and adds no new file or state.
+- Alternative: keep the proposal as is and bring back a per-round classification; that is the
+  mechanism that failed three times above.
