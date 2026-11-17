@@ -171,6 +171,17 @@ owner reviews it.
 A round with four reviewers and up to eight findings uses seven agents; rounds 2 and 3 are smaller.
 A clean change pays one round: its reviewers plus three voters.
 
+## Open nits for the spec
+
+Confirmed minor findings from the final review round, left for `/spec` to settle (see
+`review-log.md`):
+
+- Commits someone else pushed to the PR branch are only listed; a follow-up could still add the
+  pass marker over them on a low-risk PR. Likely answer: withhold the marker when such commits exist.
+- Later-round findings that are neither fix-caused nor left behind are voted not-real and recorded
+  as "rejected"; the ledger needs an outcome such as "later" so they are not mistaken for false.
+- Conflicts resolved in a rebase later in the run (not step 1) are not covered by the review range.
+
 ## Questions for the owner
 
 1. **Claude's own GitHub account.** Approval is a label because Claude uses your account. A separate

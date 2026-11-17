@@ -82,3 +82,21 @@ New approach, smaller rather than larger:
   finding's fix left behind. (Fixes P3-H1.)
 
 This was checked once more as a fresh, final round on the reconsidered text only (below).
+
+## Proposal, final check of the reconsidered approach (only the reconsideration diff)
+
+Finders: convergence, repo fit. 9 findings, 2 pairs of duplicates merged, leaving 7.
+
+| ID | Finding | Votes | Verdict |
+|---|---|---|---|
+| PF-K1 | Commits pushed by others can merge under a fresh pass marker on a low-risk PR | R R R | minor (nit) |
+| PF-K2 | Without a record, "commits by others" cannot be identified | R N N | rejected (Claude trailers survive rebases) |
+| PF-K3 | "For a later spec" has no ledger outcome; such findings end up "rejected" | R N R | minor (nit) |
+| PF-K4 | A conflict-free rebase can break the branch unseen | N N N | rejected |
+| PF-K5 | Rounds text could re-confirm a parked open finding and trip the cap | N N N | rejected |
+| PF-K6 | Search for left-behind instances is unbounded | R N N | rejected |
+| PF-K7 | A rebase later in the run is not covered | R N R | minor (nit) |
+
+Result: **no confirmed blocker or major → proposal agreed.** The three confirmed minors are not
+patched (last-round rule: no unreviewed fixes); they are listed in the proposal under "Open nits
+for the spec".
