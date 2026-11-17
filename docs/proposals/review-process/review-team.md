@@ -19,10 +19,11 @@ a file in `.claude/agents/` and the rules shared by all of them go in `.claude/R
 **Area reviewers.** "As today" means `/build` step 4's triggers: the categories in
 `.sdlc/risk.json` plus its judgment triggers (outside input, processes, files outside the app data
 directory; a new project, a boundary crossing, a shared type; stored data), the judgment triggers
-read against the round's diff. Every run writes `.sdlc/risk.json` for the whole branch before its
-first round, as step 4 does today, and writes it again before step 5, so the final risk includes
-the fix commits. No per-round classification: an area reviewer may run on a small fix diff, which
-costs one agent but needs no extra bookkeeping.
+read against the round's diff. Before every round and again before step 5, the run rewrites
+`.sdlc/risk.json` for the whole branch (`classify-risk.mjs --json`, as step 4 does today), so fix
+commits that enter a new category get that area's reviewer and count in the final risk. No
+per-round file: an area reviewer may run on a small fix diff, which costs one agent but needs no
+extra bookkeeping.
 
 Finders and voters are read-only and start with a fresh context. None of them sees the build's
 reasoning, and no voter sees another voter's output.
@@ -124,14 +125,10 @@ is always `in-scope`.
 
 Votes are in check order (evidence, refute, impact): R real, N not-real, U unsure.
 
-## Not agreed: one open decision
+## Decision TF-X1 (owner, approved)
 
-The final check confirmed one major finding (TF-X1 in `review-log.md`): the area-reviewer rule
-above picks reviewers from the whole-branch classification, while the agreed proposal says later
-rounds run "the reviewers whose area the fix diff touches". Recommended resolution, for the owner
-to approve because it amends the agreed proposal: later rounds run `bug-reviewer` plus the area
-reviewers chosen as in round 1, from `.sdlc/risk.json` rewritten before each round (this also
-closes TF-X2).
+Later rounds run `bug-reviewer` plus the area reviewers chosen as in round 1, from `.sdlc/risk.json`
+rewritten before each round. The proposal was amended to match; this also closes TF-X2.
 
 ## Open nits for the spec
 

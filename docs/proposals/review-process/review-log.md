@@ -188,3 +188,5 @@ further. Closing it means changing the already agreed proposal, which is the own
   file; it also closes TF-X2, and adds no new file or state.
 - Alternative: keep the proposal as is and bring back a per-round classification; that is the
   mechanism that failed three times above.
+
+Owner decision: TF-X1 amendment approved and applied to both files (closes TF-X2). Team definition agreed.

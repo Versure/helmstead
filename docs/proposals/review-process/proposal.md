@@ -102,8 +102,8 @@ out of scope.
 
 - **Round 1** reviews the branch diff (`origin/main...HEAD`).
 - **Rounds 2 and 3** run whenever the previous round committed a fix, and review only those fix
-  commits (`<last reviewed commit>..HEAD`), with `bug-reviewer` plus the reviewers whose area the fix
-  diff touches. A finding counts in these rounds for one of two causes, wherever the affected line
+  commits (`<last reviewed commit>..HEAD`), with `bug-reviewer` plus the area reviewers chosen as
+  in round 1, from the branch classification rewritten before each round. A finding counts in these rounds for one of two causes, wherever the affected line
   is: the fix diff caused it, or the fix is incomplete (an instance of a confirmed finding's class
   is still there). Anything else is for a later spec, not this loop.
 - The loop ends when a round commits no fix. Round 3 fixes no minors, so every fix is reviewed.
@@ -168,7 +168,7 @@ owner reviews it.
 
 ## Cost
 
-A round with four reviewers and up to eight findings uses seven agents; rounds 2 and 3 are smaller.
+A round with four reviewers and up to eight findings uses seven agents; rounds 2 and 3 usually have fewer findings, so fewer voters.
 A clean change pays one round: its reviewers plus three voters.
 
 ## Open nits for the spec
