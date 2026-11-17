@@ -141,3 +141,32 @@ Note: U4 and U5 came from the round-1 fix for T1-T10. Instead of patching that r
 replaced by a simpler one (split instances before the vote).
 
 Result: 1 confirmed major → revise, round 3.
+
+## Review team, round 3 (only the round-2 changes)
+
+Finders: voting/rules, implementability. 7 findings, merged to 5.
+
+| ID | Finding | Votes | Verdict |
+|---|---|---|---|
+| T3-W1 | After the split, a rejected instance vs "fix every instance of its class" | R N R | minor (nit) |
+| T3-W2 | Order of split and Collect's merge not set | R R N | minor (nit) |
+| T3-W3 | A follow-up has no branch classification; final risk understated | R R R | major |
+| T3-W4 | One `--base` can't cover rebase-resolved files | R R R | minor |
+| T3-W5 | `round-risk.json` is overwritten each round | R R R | minor |
+
+Result: round 3 still confirms a major. **Cap reached: stop patching, reconsider the approach.**
+
+### Reconsidering the approach
+
+The class that kept coming back is per-round risk classification for picking area reviewers
+(T1-T7 → T2-U1/U2/U3 → T3-W3/W4/W5). The round-1 fix for a *minor* cost finding (T1-T7) added a
+second risk file, and every round after found a new hole in it. New approach: remove it. Area
+reviewers are chosen as today, from the branch classification that every run writes fresh before
+its first round and again before step 5, plus the judgment triggers read against the round's diff.
+T1-T7's saving is given up on purpose: an area reviewer may run on a small diff (one extra agent).
+This removes W3, W4 and W5 with the mechanism.
+
+The instance class (T1-T10 → T2-U4/U5 → T3-W1/W2) produced only minors in round 3. By the
+last-round rule they are not patched; they are listed as open nits in `review-team.md`.
+
+The reconsidered text was checked once more as a final round (below).

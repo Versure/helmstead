@@ -16,14 +16,13 @@ a file in `.claude/agents/` and the rules shared by all of them go in `.claude/R
 | Finder: data | `data-reviewer` | when its area is touched, as today (same) | Read, Grep, Glob |
 | Voter | `finding-verifier` (new), run three times per batch, once per check | every round with findings | Read, Grep, Glob |
 
-**Area reviewers.** "As today" means `/build` step 4's triggers: the classifier's categories plus
-its judgment triggers (outside input, processes, files outside the app data directory; a new
-project, a boundary crossing, a shared type; stored data). Both are applied to the round's diff.
-A first run's round 1 uses `.sdlc/risk.json` (the branch classification). Every other round,
-including a follow-up's round 1, classifies only its own diff:
-`node scripts/sdlc/classify-risk.mjs --base <start of the round's diff> --json > .sdlc/round-risk.json`.
-`.sdlc/risk.json` is not overwritten; categories found in any `round-risk.json` are added to the
-final risk in step 5, like a reviewer's raise.
+**Area reviewers.** "As today" means `/build` step 4's triggers: the categories in
+`.sdlc/risk.json` plus its judgment triggers (outside input, processes, files outside the app data
+directory; a new project, a boundary crossing, a shared type; stored data), the judgment triggers
+read against the round's diff. Every run writes `.sdlc/risk.json` for the whole branch before its
+first round, as step 4 does today, and writes it again before step 5, so the final risk includes
+the fix commits. No per-round classification: an area reviewer may run on a small fix diff, which
+costs one agent but needs no extra bookkeeping.
 
 Finders and voters are read-only and start with a fresh context. None of them sees the build's
 reasoning, and no voter sees another voter's output.
@@ -124,3 +123,13 @@ is always `in-scope`.
 | R1-F3 | 1 | major | introduced | `libs/x/y.ts:40` | null result not handled | R R N | fixed `abc123` |
 
 Votes are in check order (evidence, refute, impact): R real, N not-real, U unsure.
+
+## Open nits for the spec
+
+Confirmed minor findings from the last review round, left for `/spec` to settle (see
+`review-log.md`):
+
+- After instances are split, one instance of a class can be confirmed and another rejected; state
+  that Act's "every instance of its class" means every *confirmed* instance, and that a rejected
+  instance re-raised without new evidence is a repeat.
+- State the order: split instances first, then Collect merges exact duplicates.
