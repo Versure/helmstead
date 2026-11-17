@@ -46,3 +46,39 @@ Finders: convergence, repo fit. 10 findings, 2 pairs of duplicates merged, leavi
 | P2-G8 | Act vs Cap precedence in round 3 unstated | R N N | rejected | — |
 
 Result: 2 confirmed major, 4 confirmed minor → revise, round 3.
+
+## Proposal, round 3 (only the round-2 changes)
+
+Finders: convergence, repo fit. 8 findings, 3 pairs of duplicates merged, leaving 5.
+
+| ID | Finding | Votes | Verdict |
+|---|---|---|---|
+| P3-H1 | "Evidence must be in the fix diff" rejects a re-raised instance the fix missed | R R R | major |
+| P3-H2 | `range-diff` ignores removed commits (a dropped fix) | R R R | minor |
+| P3-H3 | Follow-up range fails when the recorded SHAs or the line are missing | R R R | major |
+| P3-H4 | `range-diff` gives no diff and flags main-only context moves | R N N | rejected |
+| P3-H5 | Open (unvoted) entries never re-voted; R R + failure becomes open | N N N | rejected |
+
+Result: round 3 still confirms 2 majors. **Cap reached: stop patching, reconsider the approach.**
+
+### Reconsidering the approach
+
+Two classes came back in every round:
+
+1. *Knowing what is new since the last review across rebases* (P1-F8 → P2-G3 → P3-H2, P3-H3).
+   Each patch added git bookkeeping (a recorded commit, then a base, then `range-diff`), and each
+   added failure mode was found next round. This is the same pattern as the earlier branch:
+   hardening a mechanism instead of removing the need for it.
+2. *Tying later rounds to the fix diff by location* (P1-F14 → P2-G1 → P3-H1). Each narrower rule
+   rejected a real case.
+
+New approach, smaller rather than larger:
+
+- A follow-up run reviews only what it changes itself: its own commits, plus the branch diff of the
+  files it resolved in a rebase. No `Reviewed up to` record, no `range-diff`. Commits pushed by
+  others are listed for the owner, not agent-reviewed. (Removes P3-H2 and P3-H3 by removing the
+  mechanism.)
+- Later rounds count a finding by cause: caused by the fix diff, or an instance a confirmed
+  finding's fix left behind. (Fixes P3-H1.)
+
+This was checked once more as a fresh, final round on the reconsidered text only (below).

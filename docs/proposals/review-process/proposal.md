@@ -71,8 +71,8 @@ out of scope.
 3. **Vote.** Three voter agents, one per check (evidence, refute, impact), each vote on every
    finding of the round. Each voter sees the findings, the diff, the spec, `.claude/REVIEW.md` and
    the ledger; never another voter's vote nor the build's opinion. A finding that repeats a ledger
-   entry with no new evidence is voted not-real; so is, in rounds 2 and 3, a finding whose evidence
-   does not point to a line in the fix diff that causes it. A voter gets at most eight findings;
+   entry with no new evidence is voted not-real; so is, in rounds 2 and 3, a finding that neither
+   the fix diff caused nor shows a confirmed finding's fix to be incomplete. A voter gets at most eight findings;
    more are split into batches, each batch with its own three voters.
 4. **Decide**, mechanically:
    - A voter that fails or answers in the wrong format is run once more. If a finding still lacks
@@ -103,8 +103,9 @@ out of scope.
 - **Round 1** reviews the branch diff (`origin/main...HEAD`).
 - **Rounds 2 and 3** run whenever the previous round committed a fix, and review only those fix
   commits (`<last reviewed commit>..HEAD`), with `bug-reviewer` plus the reviewers whose area the fix
-  diff touches. A finding counts in these rounds when the fix diff caused it, wherever the affected
-  line is; its evidence must point to the line in the fix diff that causes it.
+  diff touches. A finding counts in these rounds for one of two causes, wherever the affected line
+  is: the fix diff caused it, or the fix is incomplete (an instance of a confirmed finding's class
+  is still there). Anything else is for a later spec, not this loop.
 - The loop ends when a round commits no fix. Round 3 fixes no minors, so every fix is reviewed.
 - **Cap.** If round 3 still confirms an introduced blocker or major, stop patching: no pass marker,
   the PR is (or is turned back into) a **draft** with `gh pr ready --undo`, and it gets a
@@ -118,9 +119,8 @@ The PR description's AI review section holds one table, written by the build:
 
 | ID | Round | Severity | Origin | Where | Finding | Votes | Outcome |
 
-Outcome is one of: fixed (`sha`), rejected, nit, pre-existing, out of scope, open. Under it, one
-line: `Reviewed up to: <head sha> on <base sha>` (the merge base with `main` at that time). The
-gate never reads the ledger; only `/build` does.
+Outcome is one of: fixed (`sha`), rejected, nit, pre-existing, out of scope, open. The gate never
+reads the ledger; only `/build` does.
 
 ### Pass marker
 
@@ -132,12 +132,12 @@ description **before** it pushes.
 ### Follow-up runs
 
 `/build NNN address the PR comments` treats the owner's comments as requirements, as today, and
-takes the ledger from the PR description. Its round 1 reviews every commit that is new or changed
-since the reviewed version: the ones `git range-diff <base sha>..<head sha> <current base>..HEAD`
-shows as added or changed. That covers its own commits, commits pushed by others, and edits made
-while resolving rebase conflicts, whatever rebases happened, and leaves out what `main` brought in.
-It never falls back to the whole branch. Each run has its own three-round cap: a run starts only when the owner asks, which is the
-human brake on the loop.
+takes the ledger from the PR description. Its round 1 reviews only what this run changes: the
+commits it adds (from the head after step 1), plus, when step 1's rebase had conflicts, the branch
+diff of each file it resolved. It never re-reviews the whole branch and needs no record of earlier
+commits. Commits someone else pushed are not reviewed by agents; the run lists them in the PR for
+the owner. Each run has its own three-round cap: a run starts only when the owner asks, which is
+the human brake on the loop.
 
 ### Ad-hoc reviews
 
@@ -159,7 +159,7 @@ that failed.
 | `.claude/agents/bug-reviewer.md` (new) | General correctness reviewer, every change |
 | `.claude/agents/{spec,security,architecture,data}-reviewer.md` | New finding format; read `.claude/REVIEW.md` and the ledger |
 | `.claude/skills/build/SKILL.md` | Step 4 replaced by the loop above; step 1 follow-up range and ledger; step 6 ledger, the new pass rule and marker removal before push |
-| `.github/pull_request_template.md` | AI review section: the ledger table and `Reviewed up to`; the marker comment states the new pass rule |
+| `.github/pull_request_template.md` | AI review section: the ledger table; the marker comment states the new pass rule |
 | `docs/sdlc.md` | Section 2 and 4 describe the vote and the cap in a few lines |
 | `CLAUDE.md` | One line pointing ad-hoc reviews at `.claude/REVIEW.md` |
 

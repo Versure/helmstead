@@ -22,7 +22,8 @@ reasoning, and no voter sees another voter's output.
 ## Finders
 
 **Input:** the spec path; the round's diff file (`.sdlc/review.diff`: the branch diff in round 1,
-only the fix commits in later rounds, the new or changed commits in a follow-up's round 1);
+only the fix commits in later rounds; in a follow-up's round 1, that run's commits and the branch
+diff of files it resolved in a rebase);
 `.sdlc/risk.json`; `.claude/REVIEW.md`; the ledger so far (`.sdlc/ledger.md`, taken from the PR
 description in a follow-up run, empty in a first run's round 1).
 
@@ -30,7 +31,8 @@ description in a follow-up run, empty in a first run's round 1).
 agent files; `bug-reviewer`: logic errors, wrong conditions, unhandled errors and empty states,
 races, broken callers, docs or instructions the change makes untrue). Do not re-raise a finding the
 ledger has decided unless you have new evidence, such as a fix that did not work. In rounds 2 and 3
-the evidence must point to the line in the fix diff that causes the problem. Report each class of
+report only what the fix diff caused or an instance a confirmed finding's fix left behind. Report
+each class of
 bug once, listing every instance.
 
 **Output**, exactly:
@@ -73,7 +75,8 @@ F<n> | real|not-real|unsure | blocker|major|minor|- | introduced|pre-existing | 
 ```
 
 `not-real` when the claim is false, already handled, a repeat of a ledger entry without new
-evidence, style, or (rounds 2 and 3) its evidence does not point to a line in the fix diff.
+evidence, style, or (rounds 2 and 3) neither caused by the fix diff nor an instance a confirmed
+finding's fix left behind.
 `out-of-scope` only when the finding asks for more than the spec; a defect the change introduces
 is always `in-scope`.
 `unsure` when checking did not settle it.
@@ -104,4 +107,3 @@ is always `in-scope`.
 | R1-F3 | 1 | major | introduced | `libs/x/y.ts:40` | null result not handled | R R N | fixed `abc123` |
 
 Votes are in check order (evidence, refute, impact): R real, N not-real, U unsure.
-Under the table: `Reviewed up to: <head sha> on <base sha>`.
