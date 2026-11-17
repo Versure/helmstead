@@ -71,8 +71,9 @@ out of scope.
 3. **Vote.** Three voter agents, one per check (evidence, refute, impact), each vote on every
    finding of the round. Each voter sees the findings, the diff, the spec, `.claude/REVIEW.md` and
    the ledger; never another voter's vote nor the build's opinion. A finding that repeats a ledger
-   entry with no new evidence is voted not-real. A voter gets at most eight findings; more are split
-   into batches, each batch with its own three voters.
+   entry with no new evidence is voted not-real; so is, in rounds 2 and 3, a finding whose evidence
+   does not point to a line in the fix diff that causes it. A voter gets at most eight findings;
+   more are split into batches, each batch with its own three voters.
 4. **Decide**, mechanically:
    - A voter that fails or answers in the wrong format is run once more. If a finding still lacks
      three valid votes, it is **open** (owner decides), not rejected.
@@ -80,7 +81,8 @@ out of scope.
    - Severity: the median of the three votes, where not-real or unsure counts as below minor.
    - Origin and scope: what the majority says.
    - **Security findings** (from `security-reviewer`, or tagged security): a confirmed one keeps the
-     severity its finder gave. One with exactly one real vote is not fixed, but is listed under
+     severity its finder gave. One its finder rated blocker or major that got exactly one real
+     vote is not fixed, but is listed under
      Owner review focus and the PR gets `<!-- risk:raise security -->`, so the owner sees it. This
      uses the gate as it is.
 5. **Act** on confirmed findings only:
@@ -90,7 +92,8 @@ out of scope.
      do not build it: it becomes an **open finding** for the owner.
    - introduced minor: fix it if it is a local edit and this is not round 3; otherwise list it as a
      Nit.
-   - pre-existing, or out of scope: do not fix. List it under Pre-existing / Out of scope; a
+   - pre-existing, or out of scope (asks for more than the spec; an introduced defect is never
+     this): do not fix. List it under Pre-existing / Out of scope; a
      pre-existing blocker also goes under Open findings so the owner sees it.
    - rejected: record it with its votes. Nothing else.
 6. **Verify and commit** the fixes (`verify.mjs`), then update the ledger.
@@ -106,7 +109,8 @@ out of scope.
 - **Cap.** If round 3 still confirms an introduced blocker or major, stop patching: no pass marker,
   the PR is (or is turned back into) a **draft** with `gh pr ready --undo`, and it gets a
   "Reconsider the approach" section naming the bug classes that kept coming back. Tell the owner.
-  A draft never auto-merges.
+  A draft never auto-merges. A later run that ends clean on such a draft marks it ready again
+  (`gh pr ready`).
 
 ### The ledger
 
@@ -115,7 +119,8 @@ The PR description's AI review section holds one table, written by the build:
 | ID | Round | Severity | Origin | Where | Finding | Votes | Outcome |
 
 Outcome is one of: fixed (`sha`), rejected, nit, pre-existing, out of scope, open. Under it, one
-line: `Reviewed up to: <sha>`. The gate never reads the ledger; only `/build` does.
+line: `Reviewed up to: <head sha> on <base sha>` (the merge base with `main` at that time). The
+gate never reads the ledger; only `/build` does.
 
 ### Pass marker
 
@@ -127,10 +132,11 @@ description **before** it pushes.
 ### Follow-up runs
 
 `/build NNN address the PR comments` treats the owner's comments as requirements, as today, and
-takes the ledger from the PR description. Before step 1 rebases, it notes the commits after
-`Reviewed up to` (normally none). Its round 1 reviews only those commits (as rebased) and the
-commits it adds itself, from the head right after the rebase; it never falls back to the whole
-branch. Each run has its own three-round cap: a run starts only when the owner asks, which is the
+takes the ledger from the PR description. Its round 1 reviews every commit that is new or changed
+since the reviewed version: the ones `git range-diff <base sha>..<head sha> <current base>..HEAD`
+shows as added or changed. That covers its own commits, commits pushed by others, and edits made
+while resolving rebase conflicts, whatever rebases happened, and leaves out what `main` brought in.
+It never falls back to the whole branch. Each run has its own three-round cap: a run starts only when the owner asks, which is the
 human brake on the loop.
 
 ### Ad-hoc reviews
@@ -138,8 +144,11 @@ human brake on the loop.
 `CLAUDE.md` gets one line: when an agent reviews its own work outside `/build`, it follows
 `.claude/REVIEW.md`. That file says what replaces the `/build` parts there: the task as the user
 stated it is the scope, written at the top of the ledger before round 1; the ledger is a file in
-the session; at the cap the agent stops and reports to the user with "Reconsider the approach"
-instead of opening a draft. That is the loop that failed.
+the session; round 1 reviews the change made for the task, and each later round reviews the edits
+made as fixes in the round before ("commits a fix" means "makes a fix"); open findings and
+security findings with one real vote are reported to the user; at the cap the agent stops and
+reports to the user with "Reconsider the approach" instead of opening a draft. That is the loop
+that failed.
 
 ## Files changed when built
 

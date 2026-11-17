@@ -29,3 +29,20 @@ duplicates and were merged, leaving 15.
 | P1-F15 | Ad-hoc reviews lack spec, ledger home and draft PR | R R R | major | `.claude/REVIEW.md` defines the ad-hoc substitutes |
 
 Result: 8 confirmed major, 3 confirmed minor → revise, round 2.
+
+## Proposal, round 2 (only the round-1 changes, with the round-1 log as ledger)
+
+Finders: convergence, repo fit. 10 findings, 2 pairs of duplicates merged, leaving 8.
+
+| ID | Finding | Votes | Verdict | Change |
+|---|---|---|---|---|
+| P2-G1 | "Caused by the fix diff" is checked by no step; an introduced finding voted out of scope matches two rules | R N R | minor | Voters reject later-round findings whose evidence is not in the fix diff; Act restates what out of scope means |
+| P2-G2 | `review-team.md` still states the old rules (root REVIEW.md, no re-raise, missing vote = not real, median for security) | R R R | major | `review-team.md` brought in line; an accidentally dropped "rated blocker or major" restored |
+| P2-G3 | Follow-up range misses rebase conflict edits and breaks on owner branch updates | R R R | major | Ledger records head and base; follow-up reviews what `git range-diff` shows as new or changed |
+| P2-G4 | Ad-hoc variant has no round diff and no meaning for "commits a fix" | R R N | minor | Defined: round 1 = the task's change, later rounds = the fix edits |
+| P2-G5 | A draft made at the cap is never marked ready again | R R R | minor | A later clean run runs `gh pr ready` |
+| P2-G6 | An open (unvoted) finding has no exit on a low-risk PR | N N N | rejected | — (repeat of P1-F9) |
+| P2-G7 | Ad-hoc variant has no outlet for open findings or the security net | R R R | minor | They are reported to the user |
+| P2-G8 | Act vs Cap precedence in round 3 unstated | R N N | rejected | — |
+
+Result: 2 confirmed major, 4 confirmed minor → revise, round 3.

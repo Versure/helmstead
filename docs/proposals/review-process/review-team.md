@@ -2,7 +2,7 @@
 
 Companion to `proposal.md`, which sets the loop (rounds, cap, what gets fixed). This file defines
 the agents: their roles, inputs, output format and the voting rules. When built, each role becomes
-a file in `.claude/agents/` and the rules shared by all of them go in `REVIEW.md`.
+a file in `.claude/agents/` and the rules shared by all of them go in `.claude/REVIEW.md`.
 
 ## Roles
 
@@ -22,13 +22,16 @@ reasoning, and no voter sees another voter's output.
 ## Finders
 
 **Input:** the spec path; the round's diff file (`.sdlc/review.diff`: the branch diff in round 1,
-only the fix commits in later rounds); `.sdlc/risk.json`; `REVIEW.md`; the ledger so far
-(`.sdlc/ledger.md`, empty in round 1).
+only the fix commits in later rounds, the new or changed commits in a follow-up's round 1);
+`.sdlc/risk.json`; `.claude/REVIEW.md`; the ledger so far (`.sdlc/ledger.md`, taken from the PR
+description in a follow-up run, empty in a first run's round 1).
 
 **Task:** find problems in the round's diff within the finder's focus (unchanged from today's
 agent files; `bug-reviewer`: logic errors, wrong conditions, unhandled errors and empty states,
-races, broken callers, docs or instructions the change makes untrue). Do not raise anything that
-is in the ledger. Report each class of bug once, listing every instance.
+races, broken callers, docs or instructions the change makes untrue). Do not re-raise a finding the
+ledger has decided unless you have new evidence, such as a fix that did not work. In rounds 2 and 3
+the evidence must point to the line in the fix diff that causes the problem. Report each class of
+bug once, listing every instance.
 
 **Output**, exactly:
 
@@ -53,7 +56,7 @@ RAISE: none | <category>
 ## Voter (`finding-verifier`)
 
 **Input:** one check name; a batch of at most eight findings, numbered `F1…`, without the finder's
-name or verdict; the diff file; the spec; `REVIEW.md`; the ledger.
+name or verdict; the diff file; the spec; `.claude/REVIEW.md`; the ledger.
 
 **Checks** (each run does one; the orchestrator assigns all three to every batch):
 
@@ -69,28 +72,36 @@ name or verdict; the diff file; the spec; `REVIEW.md`; the ledger.
 F<n> | real|not-real|unsure | blocker|major|minor|- | introduced|pre-existing | in-scope|out-of-scope | reason in one sentence
 ```
 
-`not-real` when the claim is false, already handled, a repeat of a ledger entry, or style.
+`not-real` when the claim is false, already handled, a repeat of a ledger entry without new
+evidence, style, or (rounds 2 and 3) its evidence does not point to a line in the fix diff.
+`out-of-scope` only when the finding asks for more than the spec; a defect the change introduces
+is always `in-scope`.
 `unsure` when checking did not settle it.
 
 ## Voting rules (applied by the orchestrator, mechanically)
 
-1. A finding is **confirmed** when at least two of its three votes are `real`. A missing, malformed
-   or `unsure` vote does not count as real.
-2. **Severity** is the median of the three votes, counting `not-real` and `unsure` as below minor.
-   So a confirmed finding takes the highest severity two voters agree on.
-3. **Origin** and **scope** follow the majority of the votes; on a tie (missing votes) the finder's
+1. A voter that fails or answers in the wrong format is run once more. A finding that still lacks
+   three valid votes is **open**: not fixed, not rejected, and it withholds the pass marker.
+2. A finding is **confirmed** when at least two of its three votes are `real`. `unsure` does not
+   count as real.
+3. **Severity** is the median of the three votes, counting `not-real` and `unsure` as below minor.
+   So a confirmed finding takes the highest severity two voters agree on. A confirmed finding
+   marked `security: yes` keeps its finder's severity.
+4. **Origin** and **scope** follow the majority of the votes; on a tie (missing votes) the finder's
    value stands.
-4. **Security safety net:** a finding marked `security: yes` and rated blocker or major by its
+5. **Security safety net:** a finding marked `security: yes` and rated blocker or major by its
    finder that gets exactly one `real` vote is not fixed, but goes to Owner review focus and adds
    `<!-- risk:raise security -->`.
-5. The orchestrator records every finding in the ledger with its three votes and outcome, and does
+6. The orchestrator records every finding in the ledger with its three votes and outcome, and does
    not change a verdict. It may decline to fix a confirmed finding only for the reasons the loop
-   allows (pre-existing, out of scope, fix needs an owner decision) and says which.
+   allows (pre-existing, out of scope, fix needs an owner decision, round 3) and says which.
+   Outcomes: fixed, rejected, nit, pre-existing, out of scope, open.
 
-## Ledger (`.sdlc/ledger.md`, copied into the PR description)
+## Ledger (`.sdlc/ledger.md` during a run, copied into the PR description)
 
 | ID | Round | Severity | Origin | Where | Finding | Votes | Outcome |
 |---|---|---|---|---|---|---|---|
 | R1-F3 | 1 | major | introduced | `libs/x/y.ts:40` | null result not handled | R R N | fixed `abc123` |
 
 Votes are in check order (evidence, refute, impact): R real, N not-real, U unsure.
+Under the table: `Reviewed up to: <head sha> on <base sha>`.
