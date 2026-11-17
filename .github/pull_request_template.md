@@ -44,8 +44,8 @@ $ node scripts/sdlc/verify.mjs
 
 <details><summary>Findings ledger</summary>
 
-| ID | Reviewer | Severity | Origin | Security | Where | Claim | Votes | Verdict | Evidence |
-|---|---|---|---|---|---|---|---|---|---|
+| ID | Round | Reviewer | Severity | Origin | Security | Where | Claim | Votes | Verdict | Evidence | Outcome |
+|---|---|---|---|---|---|---|---|---|---|---|---|
 
 </details>
 

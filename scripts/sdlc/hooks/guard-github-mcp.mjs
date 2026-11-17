@@ -13,7 +13,6 @@ try {
 } catch {}
 const tool = String(input.tool_name ?? '');
 const args = input.tool_input ?? {};
-const text = JSON.stringify(args);
 
 const name = tool.replace(/^mcp__.*?__/, '');
 const method = String(args.method ?? '').toLowerCase();
@@ -28,10 +27,17 @@ if (/(un)?resolve_review_thread$/.test(name) || /(un)?resolve_thread/.test(metho
 if (event === 'APPROVE') {
   block('Claude does not approve pull requests.');
 }
-if (/human-approved/i.test(text)) {
+// Labels: look only at the fields that set them (`labels` on any tool, and `label`/`name` on a label
+// tool), so a PR description or comment that merely mentions a label is fine.
+const labelTool = /label/i.test(name) || /label/i.test(method);
+const labelValues = [args.labels, labelTool ? args.label : undefined, labelTool ? args.name : undefined]
+  .flat()
+  .filter((v) => v !== undefined && v !== null)
+  .map((v) => String(typeof v === 'object' ? (v.name ?? JSON.stringify(v)) : v));
+if (labelValues.some((v) => /^\s*human-approved\s*$/i.test(v))) {
   block('Only the owner gives the human-approved label.');
 }
-if (/\b(risk:(high|low)|needs-owner-review)\b/.test(text) && /label/i.test(name + text)) {
+if (labelValues.some((v) => /^\s*(risk:(high|low)|needs-owner-review)\s*$/i.test(v))) {
   block('Risk labels are set by the risk gate and the owner.');
 }
 

@@ -34,4 +34,5 @@ The build plan is `docs/plan.md`; §10 holds the working rules for agents. Decis
 # Conventions
 
 - Branches: `feat/NNN-slug`, `fix/NNN-slug`, `chore/slug`. Commits: Conventional Commits, English, imperative.
+- PR descriptions end with the `/build` markers (`<!-- … -->` lines), nothing after them. Attribution or any other footer goes above the markers; the risk gate reads markers only in the last lines.
 - No live API calls in tests; use recorded fixtures (plan §9).

@@ -5,7 +5,8 @@
 //   low risk + AI review pass for the head commit  -> success, auto-merge
 //     (only for a PR from this repository by an owner, member or collaborator; any other PR is high risk)
 //   anything else                                  -> failure, auto-merge off
-// New commits remove `human-approved`, so an approval always covers the code that merges.
+// The approval is recorded on the commit it covers (an `owner-approval` status), so an approval always
+// covers the code that merges: on any other head the label is removed.
 import { execFileSync } from 'node:child_process';
 import { appendFileSync, readFileSync } from 'node:fs';
 import { changedFiles, changedLines, classify, title } from './classify-risk.mjs';
@@ -30,15 +31,37 @@ const tryGh = (...args) => {
   }
 };
 
+const base = pr.base.sha;
+const head = pr.head.sha;
+
+// The owner's approval covers one commit. When the owner adds the label, this run records it as an
+// `owner-approval` status on the commit the PR had at that moment, posted by the workflow's bot. The
+// label then counts only on a head that carries that status, so a push after the approval needs a new
+// one: the label is removed and the PR waits. Event payloads are snapshots and runs can cancel each
+// other, so the label alone is never trusted.
+const APPROVAL_CONTEXT = 'owner-approval';
+const BOT = 'github-actions[bot]';
+if (event.action === 'labeled' && event.label?.name === APPROVED) {
+  const sender = event.sender?.login ?? '';
+  const isOwner = sender !== '' && sender === event.repository?.owner?.login;
+  const permission = isOwner ? 'admin' : tryGh('api', `repos/${repo}/collaborators/${sender}/permission`, '-q', '.permission')?.trim();
+  if (permission === 'admin') {
+    gh('api', '-X', 'POST', `repos/${repo}/statuses/${head}`,
+      '-f', 'state=success', '-f', `context=${APPROVAL_CONTEXT}`, '-f', `description=Approved by ${sender}`);
+  }
+}
+const approvalOnHead = () => {
+  const statuses = JSON.parse(tryGh('api', `repos/${repo}/commits/${head}/statuses?per_page=100`) ?? '[]');
+  return statuses.some((s) => s.context === APPROVAL_CONTEXT && s.state === 'success' && s.creator?.login === BOT);
+};
+
 const labels = new Set(pr.labels.map((l) => l.name));
-if (event.action === 'synchronize' && labels.has(APPROVED)) {
+if (labels.has(APPROVED) && !approvalOnHead()) {
   tryGh('pr', 'edit', String(pr.number), '--repo', repo, '--remove-label', APPROVED);
   labels.delete(APPROVED);
 }
 
 execFileSync('git', ['fetch', '--no-tags', 'origin', `+refs/pull/${pr.number}/head:refs/remotes/pr/head`]);
-const base = pr.base.sha;
-const head = pr.head.sha;
 const result = classify(changedFiles(base, head), changedLines(base, head));
 
 // Raises only: from the PR body (written by the build agent) and from the owner's label.

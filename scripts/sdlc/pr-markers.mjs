@@ -34,27 +34,29 @@ export function aiReviewPassSha(body) {
  * `status:` line from `approved` to `built`. Takes the output of `git diff -U0 --no-renames <sha> <head>`.
  */
 export function onlyStatusBuilt(diff) {
-  const files = new Set();
+  const text = String(diff ?? '');
+  if (text.trim() === '') return true;
+  const blocks = text.split(/^(?=diff --git )/m).filter((b) => b.trim() !== '');
+  // Exactly one file, a plain spec path (quoted paths, renames and new or deleted files fail).
+  if (blocks.length !== 1) return false;
+  const lines = blocks[0].replace(/\n$/, '').split('\n');
+  const file = lines[0].match(/^diff --git a\/(docs\/specs\/[^/\s"]+\.md) b\/\1$/);
+  if (!file) return false;
+  const firstHunk = lines.findIndex((l) => l.startsWith('@@ '));
+  if (firstHunk < 0) return false;
+  // Header lines before the first hunk may only be the index and the file names: no mode changes.
+  const header = lines.slice(1, firstHunk);
+  if (!header.every((l) => /^(index [0-9a-f]+\.\.[0-9a-f]+( \d+)?|--- a\/\S+|\+\+\+ b\/\S+)$/.test(l))) return false;
   const removed = [];
   const added = [];
-  for (const line of String(diff ?? '').split('\n')) {
-    const file = line.match(/^diff --git a\/(\S+) b\/(\S+)$/);
-    if (file) {
-      files.add(file[1]).add(file[2]);
-      continue;
-    }
-    if (/^(index |--- |\+\+\+ |@@ |new file mode|deleted file mode|old mode|new mode|similarity|rename |Binary )/.test(line)) {
-      if (/^(new file mode|deleted file mode|rename |Binary )/.test(line)) return false;
-      continue;
-    }
+  for (const line of lines.slice(firstHunk)) {
+    if (line.startsWith('@@ ')) continue;
     if (line.startsWith('-')) removed.push(line.slice(1));
     else if (line.startsWith('+')) added.push(line.slice(1));
+    else if (line.startsWith('\\')) continue; // "\ No newline at end of file"
+    else return false; // -U0 has no context lines
   }
-  if (files.size === 0) return true;
-  const [file] = files;
   return (
-    files.size === 1 &&
-    /^docs\/specs\/[^/]+\.md$/.test(file) &&
     removed.length === 1 &&
     added.length === 1 &&
     /^status:\s*approved\b/.test(removed[0]) &&
