@@ -1,0 +1,96 @@
+# Review team: who runs the review loop
+
+Companion to `proposal.md`, which sets the loop (rounds, cap, what gets fixed). This file defines
+the agents: their roles, inputs, output format and the voting rules. When built, each role becomes
+a file in `.claude/agents/` and the rules shared by all of them go in `REVIEW.md`.
+
+## Roles
+
+| Role | Agent | Runs | Tools |
+|---|---|---|---|
+| Orchestrator | the `/build` session itself | always | all; the only one that edits, commits or writes the PR |
+| Finder: correctness | `bug-reviewer` (new) | every round | Read, Grep, Glob |
+| Finder: spec | `spec-reviewer` | round 1, and later rounds if the fix diff touches a criterion's code or tests | Read, Grep, Glob |
+| Finder: security | `security-reviewer` | when security or pipeline is touched, as today | Read, Grep, Glob |
+| Finder: architecture | `architecture-reviewer` | when architecture is touched, as today | Read, Grep, Glob |
+| Finder: data | `data-reviewer` | when data is touched, as today | Read, Grep, Glob |
+| Voter | `finding-verifier` (new), run three times per batch, once per check | every round with findings | Read, Grep, Glob |
+
+Finders and voters are read-only and start with a fresh context. None of them sees the build's
+reasoning, and no voter sees another voter's output.
+
+## Finders
+
+**Input:** the spec path; the round's diff file (`.sdlc/review.diff`: the branch diff in round 1,
+only the fix commits in later rounds); `.sdlc/risk.json`; `REVIEW.md`; the ledger so far
+(`.sdlc/ledger.md`, empty in round 1).
+
+**Task:** find problems in the round's diff within the finder's focus (unchanged from today's
+agent files; `bug-reviewer`: logic errors, wrong conditions, unhandled errors and empty states,
+races, broken callers, docs or instructions the change makes untrue). Do not raise anything that
+is in the ledger. Report each class of bug once, listing every instance.
+
+**Output**, exactly:
+
+```
+VERDICT: pass | changes-needed
+FINDINGS:
+- severity: blocker|major|minor
+  origin: introduced|pre-existing
+  security: yes|no
+  where: path:line (every instance of the class)
+  claim: what is wrong
+  evidence: the lines that show it, or the concrete input or sequence that triggers it
+  class: short name of the bug class
+OWNER REVIEW FOCUS:
+- path:start-end — why this is risky — the question for the owner
+RAISE: none | <category>
+```
+
+`spec-reviewer` and `bug-reviewer` leave OWNER REVIEW FOCUS empty and RAISE `none`, as
+`spec-reviewer` does today.
+
+## Voter (`finding-verifier`)
+
+**Input:** one check name; a batch of at most eight findings, numbered `F1…`, without the finder's
+name or verdict; the diff file; the spec; `REVIEW.md`; the ledger.
+
+**Checks** (each run does one; the orchestrator assigns all three to every batch):
+
+- **evidence**: open the cited lines. Does the code (or doc) actually say what the finding claims?
+- **refute**: try to prove it wrong: find the guard, caller, test or rule that already handles it,
+  or show the trigger cannot happen. Real only if refuting fails.
+- **impact**: play out the trigger step by step. Does it end in wrong behaviour, and how bad?
+  For a doc or instruction, follow it as the next agent would.
+
+**Output**, one line per finding, exactly:
+
+```
+F<n> | real|not-real|unsure | blocker|major|minor|- | introduced|pre-existing | in-scope|out-of-scope | reason in one sentence
+```
+
+`not-real` when the claim is false, already handled, a repeat of a ledger entry, or style.
+`unsure` when checking did not settle it.
+
+## Voting rules (applied by the orchestrator, mechanically)
+
+1. A finding is **confirmed** when at least two of its three votes are `real`. A missing, malformed
+   or `unsure` vote does not count as real.
+2. **Severity** is the median of the three votes, counting `not-real` and `unsure` as below minor.
+   So a confirmed finding takes the highest severity two voters agree on.
+3. **Origin** and **scope** follow the majority of the votes; on a tie (missing votes) the finder's
+   value stands.
+4. **Security safety net:** a finding marked `security: yes` and rated blocker or major by its
+   finder that gets exactly one `real` vote is not fixed, but goes to Owner review focus and adds
+   `<!-- risk:raise security -->`.
+5. The orchestrator records every finding in the ledger with its three votes and outcome, and does
+   not change a verdict. It may decline to fix a confirmed finding only for the reasons the loop
+   allows (pre-existing, out of scope, fix needs an owner decision) and says which.
+
+## Ledger (`.sdlc/ledger.md`, copied into the PR description)
+
+| ID | Round | Severity | Origin | Where | Finding | Votes | Outcome |
+|---|---|---|---|---|---|---|---|
+| R1-F3 | 1 | major | introduced | `libs/x/y.ts:40` | null result not handled | R R N | fixed `abc123` |
+
+Votes are in check order (evidence, refute, impact): R real, N not-real, U unsure.
