@@ -11,15 +11,19 @@ a file in `.claude/agents/` and the rules shared by all of them go in `.claude/R
 | Orchestrator | the `/build` session itself | always | all; the only one that edits, commits or writes the PR |
 | Finder: correctness | `bug-reviewer` (new) | every round | Read, Grep, Glob |
 | Finder: spec | `spec-reviewer` | round 1, and later rounds if the fix diff touches a criterion's code or tests | Read, Grep, Glob |
-| Finder: security | `security-reviewer` | when security or pipeline is touched (see Area reviewers in later rounds) | Read, Grep, Glob |
-| Finder: architecture | `architecture-reviewer` | when architecture is touched (same) | Read, Grep, Glob |
-| Finder: data | `data-reviewer` | when data is touched (same) | Read, Grep, Glob |
+| Finder: security | `security-reviewer` | when its area is touched, as today (see Area reviewers) | Read, Grep, Glob |
+| Finder: architecture | `architecture-reviewer` | when its area is touched, as today (same) | Read, Grep, Glob |
+| Finder: data | `data-reviewer` | when its area is touched, as today (same) | Read, Grep, Glob |
 | Voter | `finding-verifier` (new), run three times per batch, once per check | every round with findings | Read, Grep, Glob |
 
-**Area reviewers in later rounds.** Round 1 uses `.sdlc/risk.json` (the branch classification,
-which also feeds the PR's final risk). Rounds 2 and 3 pick area reviewers from the fix diff alone:
-`node scripts/sdlc/classify-risk.mjs --base <last reviewed commit> --json > .sdlc/round-risk.json`,
-leaving `.sdlc/risk.json` unchanged.
+**Area reviewers.** "As today" means `/build` step 4's triggers: the classifier's categories plus
+its judgment triggers (outside input, processes, files outside the app data directory; a new
+project, a boundary crossing, a shared type; stored data). Both are applied to the round's diff.
+A first run's round 1 uses `.sdlc/risk.json` (the branch classification). Every other round,
+including a follow-up's round 1, classifies only its own diff:
+`node scripts/sdlc/classify-risk.mjs --base <start of the round's diff> --json > .sdlc/round-risk.json`.
+`.sdlc/risk.json` is not overwritten; categories found in any `round-risk.json` are added to the
+final risk in step 5, like a reviewer's raise.
 
 Finders and voters are read-only and start with a fresh context. None of them sees the build's
 reasoning, and no voter sees another voter's output.
@@ -83,8 +87,6 @@ F<n> | real|not-real|unsure | blocker|major|minor|- | introduced|pre-existing | 
 `not-real` when the claim is false, already handled, a repeat of a ledger entry without new
 evidence, style, or (rounds 2 and 3) neither caused by the fix diff nor an instance a confirmed
 finding's fix left behind.
-A finding that lists several instances is `real` if at least one instance is; the reason names
-any instance the voter found not real.
 `out-of-scope` only when the finding asks for more than the spec; a defect the change introduces
 is always `in-scope`.
 `unsure` when checking did not settle it.
@@ -93,23 +95,26 @@ is always `in-scope`.
 
 1. A voter that fails or answers in the wrong format is run once more. A finding that still lacks
    three valid votes is **open**: not fixed, not rejected, and it withholds the pass marker.
-2. A finding is **confirmed** when at least two of its three votes are `real`. `unsure` does not
+2. **Instances.** Before the vote, the orchestrator splits a finding that lists several
+   instances into one finding per instance (`F2a`, `F2b`, …, same claim and class). Each is
+   voted, decided and recorded in the ledger on its own, with the class in the Finding cell.
+3. A finding is **confirmed** when at least two of its three votes are `real`. `unsure` does not
    count as real.
-3. **Severity** is the median of the three votes, counting `not-real` and `unsure` as below minor.
+4. **Severity** is the median of the three votes, counting `not-real` and `unsure` as below minor.
    So a confirmed finding takes the highest severity two voters agree on. A confirmed security
    finding keeps its finder's severity. A **security finding** is one from `security-reviewer`
    or marked `security: yes`; the orchestrator sets `security: yes` on every `security-reviewer`
-   finding before the vote.
-4. **Origin** and **scope** follow the majority of the votes; on a tie (missing votes) the finder's
+   finding before the vote. When Collect merges duplicates with different finder severities, the
+   highest stands.
+5. **Origin** and **scope** follow the majority of the votes; on a tie (missing votes) the finder's
    value stands.
-5. **Security safety net:** a security finding rated blocker or major by its
+6. **Security safety net:** a security finding rated blocker or major by its
    finder that gets exactly one `real` vote is not fixed, but goes to Owner review focus and adds
    `<!-- risk:raise security -->`.
-6. The orchestrator records every finding in the ledger with its three votes and outcome, and does
+7. The orchestrator records every finding in the ledger with its three votes and outcome, and does
    not change a verdict. It may decline to fix a confirmed finding only for the reasons the loop
    allows (pre-existing, out of scope, fix needs an owner decision, an introduced minor that is not a
-   local edit or is found in round 3) and says which. It does not fix an instance that two voters
-   name as not real.
+   local edit or is found in round 3) and says which.
    Outcomes: fixed, rejected, nit, pre-existing, out of scope, open.
 
 ## Ledger (`.sdlc/ledger.md` during a run, copied into the PR description)

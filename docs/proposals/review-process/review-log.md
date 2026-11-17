@@ -123,3 +123,21 @@ Finders: voting soundness, implementability, proportion. 18 findings, merged to 
 | T1-T14 | Voters see finder's severity/origin → anchoring | R N N | rejected | — |
 
 Result: 2 confirmed major, 3 confirmed minor → revise, round 2.
+
+## Review team, round 2 (only the round-1 changes)
+
+Finders: voting/rules, implementability. 7 findings, merged to 6.
+
+| ID | Finding | Votes | Verdict | Change |
+|---|---|---|---|---|
+| T2-U1 | Dropping "as today" lost `/build`'s judgment triggers for area reviewers | R R R | major | "As today" restored and spelled out; applied to each round's diff |
+| T2-U2 | Categories from fix commits never reach the final risk | R N R | minor | `round-risk.json` categories are added in step 5 |
+| T2-U3 | A follow-up's round 1 picks area reviewers from the whole branch | R N R | minor | Every round except a first run's round 1 classifies its own diff |
+| T2-U4 | Per-instance "not real" rule is not mechanical | R R R | minor | Rule replaced: instances are split into separate findings before the vote |
+| T2-U5 | A vote-rejected instance isn't recorded and comes back | R R R | minor | Same change: each instance has its own ledger row |
+| T2-U6 | Merged security duplicate has two finder severities | R N R | minor | Highest stands |
+
+Note: U4 and U5 came from the round-1 fix for T1-T10. Instead of patching that rule, it was
+replaced by a simpler one (split instances before the vote).
+
+Result: 1 confirmed major → revise, round 3.
