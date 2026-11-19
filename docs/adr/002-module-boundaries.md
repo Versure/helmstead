@@ -72,11 +72,11 @@ The ESLint config, project tags, formatting config, the architecture tests and t
 
 - An agent that crosses a boundary gets a failing build and a message, not a review comment a week later.
 - The `scope:` scheme is deliberately coarse. It is extended by spec 002, not worked around.
-- **Known gap:** `GET /health` has no session token. It listens on `127.0.0.1` only and refuses to start on any other
-  address, but another local process can call it. The sidecar spec (plan §3.3) adds the token and the 401 on a missing
-  one, and closes this gap.
-- `AllowedHosts` is limited to `127.0.0.1` and `localhost`, which blocks requests that arrive under another host name
-  (DNS rebinding). It is not authentication.
+- **Known gap (closed):** `GET /health` had no session token, so another local process could call it. Closed by
+  [ADR 006](006-session-token-and-request-checks.md) (spec 004): every request, `/health` included, needs the session
+  token, and the host and origin are checked first.
+- `AllowedHosts` is limited to `127.0.0.1` and `[::1]`. The host check of [ADR 006](006-session-token-and-request-checks.md)
+  runs before it and is what blocks DNS rebinding; neither is authentication on its own.
 - `libs/api-contracts` declares `core` as an implicit dependency. That is the one intended exception to "shared
   depends on shared only": it records that the contract is produced by the core, so a core change re-runs the
   contract check. `@nx/enforce-module-boundaries` only checks imports, so it does not see this edge.
