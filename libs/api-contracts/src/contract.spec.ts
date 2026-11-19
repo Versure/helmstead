@@ -36,7 +36,16 @@ describe('api contract', () => {
     expect(document.components.securitySchemes).toEqual({
       SessionToken: expect.objectContaining({ type: 'http', scheme: 'bearer' }),
     });
-    const methods = ['get', 'put', 'post', 'delete', 'options', 'head', 'patch', 'trace'];
+    const methods = [
+      'get',
+      'put',
+      'post',
+      'delete',
+      'options',
+      'head',
+      'patch',
+      'trace',
+    ];
     const operations = Object.values(
       document.paths as Record<string, Record<string, unknown>>,
     ).flatMap((path) =>

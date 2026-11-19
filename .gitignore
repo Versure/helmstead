@@ -20,3 +20,6 @@ vitest.config.*.timestamp*
 
 # Temporary files of the lint fixture tests (tools/eslint/lint-fixture.ts)
 *.lint-fixture-*
+
+# Development session token of `npx nx serve core` (tools/dev/serve-core.mjs, spec 004)
+.helmstead/
