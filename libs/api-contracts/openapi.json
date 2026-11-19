@@ -21,8 +21,30 @@
                 }
               }
             }
+          },
+          "401": {
+            "description": "The request did not carry the session token.",
+            "headers": {
+              "WWW-Authenticate": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
           }
-        }
+        },
+        "security": [
+          {
+            "SessionToken": [ ]
+          }
+        ]
       }
     }
   },
@@ -42,6 +64,33 @@
             "type": "string"
           }
         }
+      },
+      "ProblemDetails": {
+        "required": [
+          "type",
+          "title",
+          "status"
+        ],
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "status": {
+            "type": "integer",
+            "format": "int32"
+          }
+        }
+      }
+    },
+    "securitySchemes": {
+      "SessionToken": {
+        "type": "http",
+        "description": "The session token the shell created for this run of the core, as `Authorization: Bearer <token>`.",
+        "scheme": "bearer"
       }
     }
   },
