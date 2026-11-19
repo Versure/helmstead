@@ -65,21 +65,38 @@ export function serveCore(
   const token = createToken();
   writeTokenFile(tokenFile, token);
   const cleanUp = () => removeTokenFile(tokenFile, token);
-  process.once('exit', cleanUp);
 
+  // On POSIX the core gets its own process group, and a signal goes to the whole group: `dotnet run` ignores a SIGINT
+  // that reaches only itself and waits for the app, which in a terminal would get it from the group. On Windows the
+  // console delivers Ctrl+C to every process attached to it.
+  const posix = process.platform !== 'win32';
   const child = spawn(command, args, {
     cwd,
     stdio: 'inherit',
+    detached: posix,
     env: { ...process.env, HELMSTEAD_SESSION_TOKEN: token },
   });
   const signals = ['SIGINT', 'SIGTERM', 'SIGHUP'];
-  const forward = (signal) => child.kill(signal);
+  const forward = (signal) => {
+    try {
+      if (posix && child.pid) process.kill(-child.pid, signal);
+      else child.kill(signal);
+    } catch {
+      // The core has already exited.
+    }
+  };
   for (const signal of signals) process.on(signal, forward);
+  // Should the launcher itself end first (an error, a stray process.exit), it takes the core and the file with it.
+  const onExit = () => {
+    forward('SIGTERM');
+    cleanUp();
+  };
+  process.once('exit', onExit);
 
   return new Promise((resolve) => {
     const done = (code) => {
       for (const signal of signals) process.off(signal, forward);
-      process.off('exit', cleanUp);
+      process.off('exit', onExit);
       cleanUp();
       resolve(code);
     };

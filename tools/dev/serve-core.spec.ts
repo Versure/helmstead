@@ -1,4 +1,4 @@
-import { spawnSync } from 'node:child_process';
+import { spawn, spawnSync } from 'node:child_process';
 import {
   existsSync,
   mkdtempSync,
@@ -146,6 +146,50 @@ describe('the dev launcher of the core', () => {
     expect(result.stdout + result.stderr).not.toContain(token);
   });
 
+  // `dotnet run` ignores a SIGINT that reaches only itself: it waits for the app, which in a terminal gets the signal
+  // from the process group. This stub behaves the same, so the launcher must signal the core's whole group.
+  it.skipIf(windows)(
+    'stops the whole core, app included, when it is stopped itself, and deletes the file',
+    async () => {
+      const pids = path.join(dir, 'pids.json');
+      const runner = path.join(dir, 'runner.cjs');
+      writeFileSync(
+        runner,
+        `
+const { spawn } = require('node:child_process');
+const { writeFileSync } = require('node:fs');
+process.on('SIGINT', () => {});
+const app = spawn(process.execPath, ['-e', 'setInterval(() => {}, 1000)'], { stdio: 'ignore' });
+app.on('exit', () => process.exit(0));
+writeFileSync(${JSON.stringify(pids)}, JSON.stringify({ runner: process.pid, app: app.pid }));
+`,
+      );
+      const script = `
+        import { serveCore } from ${JSON.stringify(launcher.replaceAll('\\', '/'))};
+        process.exitCode = await serveCore(
+          { command: process.execPath, args: [${JSON.stringify(runner)}], cwd: ${JSON.stringify(dir)} },
+          ${JSON.stringify(tokenFile)},
+        );`;
+      const launched = spawn(
+        process.execPath,
+        ['--input-type=module', '-e', script],
+        { stdio: 'ignore' },
+      );
+      const exited = new Promise((resolve) => launched.once('exit', resolve));
+      await waitFor(() => existsSync(pids));
+      const { runner: runnerPid, app } = JSON.parse(
+        readFileSync(pids, 'utf8'),
+      ) as { runner: number; app: number };
+      expect(existsSync(tokenFile)).toBe(true);
+
+      launched.kill('SIGINT');
+      await exited;
+
+      await waitFor(() => !alive(app) && !alive(runnerPid));
+      expect(existsSync(tokenFile)).toBe(false);
+    },
+  );
+
   it('runs the core with dotnet from its project folder', () => {
     expect(DOTNET.command).toBe('dotnet');
     expect(DOTNET.args).toEqual(['run', '--launch-profile', 'http']);
@@ -154,3 +198,20 @@ describe('the dev launcher of the core', () => {
     );
   });
 });
+
+function alive(pid: number) {
+  try {
+    process.kill(pid, 0);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+async function waitFor(condition: () => boolean, timeout = 15_000) {
+  const until = Date.now() + timeout;
+  while (!condition()) {
+    if (Date.now() > until) throw new Error('Timed out');
+    await new Promise((resolve) => setTimeout(resolve, 50));
+  }
+}

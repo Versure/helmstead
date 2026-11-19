@@ -1,0 +1,2 @@
+$ curl -sS -i http://127.0.0.1:5108/health | head -1
+HTTP/1.1 401 Unauthorized
