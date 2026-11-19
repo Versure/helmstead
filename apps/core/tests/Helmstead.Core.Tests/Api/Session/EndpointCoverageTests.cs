@@ -30,6 +30,18 @@ public sealed partial class EndpointCoverageTests(CoreApp app) : IClassFixture<C
         }
     }
 
+    [Fact]
+    public void The_session_checks_are_the_outermost_startup_filter()
+    {
+        _ = app.Server;
+
+        // Startup filters wrap in registration order, the first outermost. Anything registered before the session
+        // filter would run before the checks, so it must stay first.
+        var first = app.Services.GetServices<Microsoft.AspNetCore.Hosting.IStartupFilter>().First();
+
+        Assert.Equal("SessionChecksStartupFilter", first.GetType().Name);
+    }
+
     [GeneratedRegex(@"\{[^}]*\}")]
     private static partial Regex Parameter();
 }

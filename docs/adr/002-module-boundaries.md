@@ -83,7 +83,8 @@ The ESLint config, project tags, formatting config, the architecture tests and t
 - A `dotnet build` of `Helmstead.Core.Api` writes `libs/api-contracts/openapi.json` (build-time OpenAPI generation).
   Nx cannot see that write, so `core:build` is never cached. Once the core's startup does real work (a database,
   an app data folder), startup must be skipped when the OpenAPI generator starts the app, or generation must move
-  to the Nx target only.
+  to the Nx target only. [ADR 006](006-session-token-and-request-checks.md) (§ "OpenAPI generation") adds the one place that
+  detects the generator, `SessionToken.ForThisProcess()`; later startup work reuses it.
 - Every project under `apps/core/src` must match one of the assembly name patterns of the rules, or a test fails.
   Connectors may not share a `Helmstead.Connectors.*` assembly, because a connector may not reference another one;
   shared connector contracts belong in the shared kernel (`Helmstead.Core.Api.Shared`), or a new ADR must change the rule.

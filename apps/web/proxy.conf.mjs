@@ -39,6 +39,14 @@ export function coreProxy({
     changeOrigin: false,
     ws: false,
     bypass(req, res) {
+      // The core refuses every Origin, which this proxy removes; so it first refuses cross-site requests itself, or any
+      // page open in the browser could send requests to the dev core with the token (CSRF).
+      if (isCrossSite(req)) {
+        res.writeHead(403, { 'Content-Type': 'text/plain' });
+        res.end('Cross-site requests are not forwarded to the core.');
+        return req.url;
+      }
+
       const token = readToken(tokenFile);
       if (!token) {
         if (!warned) {
@@ -60,6 +68,18 @@ export function coreProxy({
       return undefined;
     },
   };
+}
+
+/**
+ * True when the browser says the request comes from another site: an `Origin` other than the dev server's own, or a
+ * `Sec-Fetch-Site` other than `same-origin` or `none` (typed in the address bar).
+ */
+export function isCrossSite(req) {
+  const origin = req.headers.origin;
+  if (origin !== undefined && origin !== `http://${req.headers.host}`)
+    return true;
+  const site = req.headers['sec-fetch-site'];
+  return site !== undefined && site !== 'same-origin' && site !== 'none';
 }
 
 export default {

@@ -100,6 +100,49 @@ describe('the dev proxy to the core', () => {
     expect(warn.mock.calls[0]?.[0]).toContain('npx nx serve core');
   });
 
+  it.each([
+    ['another origin', { origin: 'https://example.com' }],
+    ['the literal null origin', { origin: 'null' }],
+    [
+      'a cross-site fetch without Origin',
+      { origin: '', 'sec-fetch-site': 'cross-site' },
+    ],
+    [
+      'a same-site fetch from another port',
+      { origin: '', 'sec-fetch-site': 'same-site' },
+    ],
+  ])('refuses %s with 403 and adds no token', (_, headers) => {
+    writeFileSync(tokenFile, randomBytes(32).toString('base64url'));
+    const req = request(headers);
+    if (headers.origin === '') delete req.headers.origin;
+    const res = response();
+
+    const result = coreProxy({ tokenFile }).bypass(
+      req,
+      res as unknown as ServerResponse,
+    );
+
+    expect(result).toBe('/health');
+    expect(res.status).toBe(403);
+    expect(req.headers.authorization).toBeUndefined();
+  });
+
+  it.each([
+    ['its own origin', { 'sec-fetch-site': 'same-origin' }],
+    ['a typed address', { 'sec-fetch-site': 'none' }],
+  ])('forwards a request from %s', (_, headers) => {
+    writeFileSync(tokenFile, randomBytes(32).toString('base64url'));
+    const req = request(headers);
+
+    expect(
+      coreProxy({ tokenFile }).bypass(
+        req,
+        response() as unknown as ServerResponse,
+      ),
+    ).toBeUndefined();
+    expect(req.headers.authorization).toMatch(/^Bearer /);
+  });
+
   it('reads the file the launcher writes', () => {
     expect(TOKEN_FILE).toBe(LAUNCHER_TOKEN_FILE);
     expect(TOKEN_FILE).toBe(

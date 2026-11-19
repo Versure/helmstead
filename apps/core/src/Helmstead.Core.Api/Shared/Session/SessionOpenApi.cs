@@ -11,7 +11,7 @@ namespace Helmstead.Core.Api.Shared.Session;
 public static class SessionOpenApi
 {
     public const string SchemeName = "SessionToken";
-    private const string ProblemSchema = "ProblemDetails";
+    private const string ProblemSchema = "SessionRefusal";
 
     public static OpenApiOptions AddSessionToken(this OpenApiOptions options) =>
         options.AddDocumentTransformer((document, _, _) =>

@@ -28,7 +28,7 @@ export interface components {
             status: string;
             version: string;
         };
-        ProblemDetails: {
+        SessionRefusal: {
             type: string;
             title: string;
             /** Format: int32 */
@@ -68,7 +68,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": components["schemas"]["SessionRefusal"];
                 };
             };
         };

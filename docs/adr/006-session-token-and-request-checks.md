@@ -23,7 +23,11 @@ without a shell.
   Anything else stops startup with a message that names the variable and the rule and never contains the value.
 - **Reading.** `SessionToken.ForThisProcess()` is the first statement of `Program.cs`. It reads the variable and removes
   it from the process environment before `WebApplication.CreateBuilder` copies the environment into `IConfiguration`.
-  So the token is not in the configuration, and child processes started later (agents, MCP servers) do not inherit it.
+  So the token is not in the configuration, and child processes started with `Process.Start` do not inherit it.
+  On Linux and macOS this removes it only from .NET's copy of the environment: the native environment block
+  (`/proc/<pid>/environ`) still holds it, and a child started by native code (a PTY library, libgit2) would inherit it.
+  So the code that starts agents and MCP servers must build each child's environment explicitly, without
+  `HELMSTEAD_SESSION_TOKEN`, and test that.
 - **Lifetime.** One run of the core. A restart means a new token; there is no rotation within a run.
 - **OpenAPI generation.** At build time the OpenAPI generator (`GetDocument.Insider`) builds the app but never starts the
   server, and has no token. Only in that case the core makes up an unguessable token instead of failing, so the
@@ -48,11 +52,15 @@ pipeline: it runs before ASP.NET Core's own host filtering, before routing and b
 2. **Origin** — a request with an `Origin` header (preflights included) is refused with `403` unless the origin is in
    `SessionChecks.AllowedOrigins`. That list is a constant in code and empty; nothing at runtime can widen it. The core
    sends no `Access-Control-*` header at all.
-3. **Token** — else `401` with `WWW-Authenticate: Bearer` and the same `application/problem+json` body whatever was
-   wrong (missing, other scheme, wrong token).
+3. **Token** — else `401` with `WWW-Authenticate: Bearer` and the same `application/problem+json` body (schema `SessionRefusal` in the
+   contract) whatever was wrong (missing, other scheme, wrong token).
 
 Host and origin come first because they are a second layer should the token leak: a leaked token still cannot be used
 from a web page. A path that does not exist answers `401`, not `404`, so the API cannot be mapped without the token.
+
+The checks hold only while they are the outermost startup filter (a test pins that) and only for the Kestrel
+listener of the app. Any other listener the core opens later, such as an HTTP server for the MCP host (plan §4.5), must
+apply the same checks.
 
 **No endpoint is exempt**, `/health` included: the shell waits for the core by calling `/health` with the token. There
 is no `AllowAnonymous` and no path allow-list. An architecture rule ("No endpoint allows anonymous access") fails on any
@@ -84,7 +92,9 @@ prefix never gets it. A `401` from the core shows as "Core refused this session"
 `dotnet run` with the variable set, and deletes the file when the core exits. The core runs in its own process group so
 that stopping the launcher stops the core. The token is never printed.
 
-`npx nx serve web` uses `apps/web/proxy.conf.mjs`. On every request it reads the token file, sets
+`npx nx serve web` uses `apps/web/proxy.conf.mjs`. It first refuses a cross-site request with `403` (an `Origin`
+other than the dev server's own, or a `Sec-Fetch-Site` other than `same-origin` or `none`), because it removes `Origin`
+and so takes the core's origin check away. Then, on every request, it reads the token file, sets
 `Authorization: Bearer <token>`, sets `Host` to `127.0.0.1:5108` and removes `Origin`, and forwards only to
 `http://127.0.0.1:5108`. Without the file it answers `502` and says once that `npx nx serve core` must run. The browser
 never holds the token, and the production build contains neither the proxy nor anything that reads the file.
