@@ -1,7 +1,7 @@
 ---
 id: 004
 title: Core session token and request checks
-status: approved         # draft | approved | built
+status: built            # draft | approved | built
 type: feature            # feature | fix | chore | spike
 plan-phase: 0            # docs/plan.md §8
 branch: feat/004-core-session-token
