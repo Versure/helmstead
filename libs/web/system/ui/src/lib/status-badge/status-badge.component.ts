@@ -42,6 +42,12 @@ export class StatusBadgeComponent {
           };
         case 'unreachable':
           return { tone: 'danger', label: 'Core unreachable', title: null };
+        case 'rejected':
+          return {
+            tone: 'danger',
+            label: 'Core refused this session',
+            title: 'Restart Helmstead to start a new session',
+          };
       }
     },
   );

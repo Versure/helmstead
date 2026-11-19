@@ -176,6 +176,7 @@ State lives in plain services built on signals, `resource` and `httpResource`. N
   type-aware rules with their own `RuleTester` and config tests.
 - The font families of the design system (Bricolage Grotesque, Hanken Grotesk, JetBrains Mono) are not loaded yet: the
   app makes no request to a font CDN and falls back to the system fonts in each stack until font files are bundled.
-- `CORE_BASE_URL` is empty in development, so requests go to the dev server, whose proxy (`apps/web/proxy.conf.json`)
-  forwards `/health` to the core on `http://127.0.0.1:5108`. The sidecar spec sets it to the core's random port and
-  adds the session token.
+- `CORE_BASE_URL` is empty in development, so requests go to the dev server, whose proxy (`apps/web/proxy.conf.mjs`)
+  forwards `/health` to the core on `http://127.0.0.1:5108` and adds the session token there, so the browser never
+  holds it ([ADR 006](006-session-token-and-request-checks.md)). The sidecar spec sets `CORE_BASE_URL` to the core's
+  random port and `CORE_SESSION_TOKEN` to the token.

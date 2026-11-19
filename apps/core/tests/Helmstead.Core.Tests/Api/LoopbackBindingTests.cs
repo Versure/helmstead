@@ -1,11 +1,10 @@
 using Helmstead.Core.Api;
-using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace Helmstead.Core.Tests.Api;
 
-public sealed class LoopbackBindingTests(WebApplicationFactory<Program> factory) : IClassFixture<WebApplicationFactory<Program>>
+public sealed class LoopbackBindingTests(CoreApp factory) : IClassFixture<CoreApp>
 {
     [Theory]
     [InlineData("http://127.0.0.1:5108")]

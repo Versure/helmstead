@@ -28,6 +28,12 @@ export interface components {
             status: string;
             version: string;
         };
+        SessionRefusal: {
+            type: string;
+            title: string;
+            /** Format: int32 */
+            status: number;
+        };
     };
     responses: never;
     parameters: never;
@@ -53,6 +59,16 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HealthResponse"];
+                };
+            };
+            /** @description The request did not carry the session token. */
+            401: {
+                headers: {
+                    "WWW-Authenticate"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["SessionRefusal"];
                 };
             };
         };

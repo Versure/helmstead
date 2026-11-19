@@ -27,4 +27,43 @@ describe('api contract', () => {
       'version',
     ]);
   });
+
+  it('requires the session token on every operation and documents its 401 (spec 004)', () => {
+    const document = JSON.parse(
+      readFileSync(new URL('../openapi.json', import.meta.url), 'utf8'),
+    );
+
+    expect(document.components.securitySchemes).toEqual({
+      SessionToken: expect.objectContaining({ type: 'http', scheme: 'bearer' }),
+    });
+    const methods = [
+      'get',
+      'put',
+      'post',
+      'delete',
+      'options',
+      'head',
+      'patch',
+      'trace',
+    ];
+    const operations = Object.values(
+      document.paths as Record<string, Record<string, unknown>>,
+    ).flatMap((path) =>
+      Object.entries(path)
+        .filter(([method]) => methods.includes(method))
+        .map(([, operation]) => operation as Operation),
+    );
+    expect(operations.length).toBeGreaterThan(0);
+    for (const operation of operations) {
+      expect(operation.security).toContainEqual({ SessionToken: [] });
+      expect(
+        operation.responses['401']?.content?.['application/problem+json'],
+      ).toBeDefined();
+    }
+  });
 });
+
+interface Operation {
+  security?: Record<string, string[]>[];
+  responses: Record<string, { content?: Record<string, unknown> }>;
+}

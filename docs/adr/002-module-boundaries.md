@@ -72,18 +72,19 @@ The ESLint config, project tags, formatting config, the architecture tests and t
 
 - An agent that crosses a boundary gets a failing build and a message, not a review comment a week later.
 - The `scope:` scheme is deliberately coarse. It is extended by spec 002, not worked around.
-- **Known gap:** `GET /health` has no session token. It listens on `127.0.0.1` only and refuses to start on any other
-  address, but another local process can call it. The sidecar spec (plan §3.3) adds the token and the 401 on a missing
-  one, and closes this gap.
-- `AllowedHosts` is limited to `127.0.0.1` and `localhost`, which blocks requests that arrive under another host name
-  (DNS rebinding). It is not authentication.
+- **Known gap (closed):** `GET /health` had no session token, so another local process could call it. Closed by
+  [ADR 006](006-session-token-and-request-checks.md) (spec 004): every request, `/health` included, needs the session
+  token, and the host and origin are checked first.
+- `AllowedHosts` is limited to `127.0.0.1` and `[::1]`. The host check of [ADR 006](006-session-token-and-request-checks.md)
+  runs before it and is what blocks DNS rebinding; neither is authentication on its own.
 - `libs/api-contracts` declares `core` as an implicit dependency. That is the one intended exception to "shared
   depends on shared only": it records that the contract is produced by the core, so a core change re-runs the
   contract check. `@nx/enforce-module-boundaries` only checks imports, so it does not see this edge.
 - A `dotnet build` of `Helmstead.Core.Api` writes `libs/api-contracts/openapi.json` (build-time OpenAPI generation).
   Nx cannot see that write, so `core:build` is never cached. Once the core's startup does real work (a database,
   an app data folder), startup must be skipped when the OpenAPI generator starts the app, or generation must move
-  to the Nx target only.
+  to the Nx target only. [ADR 006](006-session-token-and-request-checks.md) (§ "OpenAPI generation") adds the one place that
+  detects the generator, `SessionToken.ForThisProcess()`; later startup work reuses it.
 - Every project under `apps/core/src` must match one of the assembly name patterns of the rules, or a test fails.
   Connectors may not share a `Helmstead.Connectors.*` assembly, because a connector may not reference another one;
   shared connector contracts belong in the shared kernel (`Helmstead.Core.Api.Shared`), or a new ADR must change the rule.
