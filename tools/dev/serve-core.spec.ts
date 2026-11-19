@@ -9,6 +9,7 @@ import {
 } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
+import { pathToFileURL } from 'node:url';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import {
   createToken,
@@ -126,7 +127,7 @@ describe('the dev launcher of the core', () => {
 
   it('never prints the token', () => {
     const script = `
-      import { serveCore } from ${JSON.stringify(path.toNamespacedPath(launcher).replaceAll('\\', '/'))};
+      import { serveCore } from ${JSON.stringify(pathToFileURL(launcher).href)};
       process.exitCode = await serveCore(
         { command: process.execPath, args: ${JSON.stringify([stub, report, tokenFile, '0'])}, cwd: ${JSON.stringify(dir)} },
         ${JSON.stringify(tokenFile)},
@@ -165,7 +166,7 @@ writeFileSync(${JSON.stringify(pids)}, JSON.stringify({ runner: process.pid, app
 `,
       );
       const script = `
-        import { serveCore } from ${JSON.stringify(launcher.replaceAll('\\', '/'))};
+        import { serveCore } from ${JSON.stringify(pathToFileURL(launcher).href)};
         process.exitCode = await serveCore(
           { command: process.execPath, args: [${JSON.stringify(runner)}], cwd: ${JSON.stringify(dir)} },
           ${JSON.stringify(tokenFile)},
