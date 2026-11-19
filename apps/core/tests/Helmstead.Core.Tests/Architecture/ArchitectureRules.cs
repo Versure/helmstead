@@ -57,6 +57,7 @@ public static class ArchitectureRules
     private static readonly Regex SliceLayout = new(Features + @"[^.]+(\.(Commands|Queries|Domain)(\..+)?)?$");
     private static readonly Regex SharedKernel = new(@"^Helmstead\.Core\.Api\.Shared(\.|$)");
 
+    private static readonly Regex Helmstead = new(@"^Helmstead\.");
     private static readonly Regex AspNetCore = new(@"^Microsoft\.AspNetCore\.");
     private static readonly Regex EfCore = new(@"^Microsoft\.EntityFrameworkCore(\.|$)");
     private static readonly Regex Http = new(@"^System\.Net\.Http(\.|$)");
@@ -145,6 +146,17 @@ public static class ArchitectureRules
             "Model providers know no harnesses (plan §2 principle 1).",
             InAssembly(Providers),
             OtherAssembly(Agents)),
+        // The session checks run for every request; nothing may opt out of them (spec 004, ADR-006).
+        new("No endpoint allows anonymous access",
+            "Every request needs the session token; no endpoint is exempt (spec 004, ADR-006).",
+            InAssembly(Helmstead),
+            AnonymousAccess),
+    ];
+
+    private static readonly string[] AnonymousTypes =
+    [
+        "Microsoft.AspNetCore.Authorization.AllowAnonymousAttribute",
+        "Microsoft.AspNetCore.Authorization.IAllowAnonymous",
     ];
 
     /// <summary>
@@ -177,6 +189,37 @@ public static class ArchitectureRules
             .Select(dependency => dependency.Target)
             .FirstOrDefault(target => target.Assembly.FullName != type.Assembly.FullName && assemblyPattern.IsMatch(target.Assembly.Name))
             ?.FullName;
+
+    private static string? AnonymousAccess(IType type) =>
+        type.Dependencies.Select(dependency => dependency.Target.FullName).FirstOrDefault(AnonymousTypes.Contains)
+        ?? type.Members
+            .SelectMany(member => member.GetMethodCallDependencies())
+            .Select(dependency => dependency.TargetMember)
+            .Where(member => member.Name.StartsWith("AllowAnonymous", StringComparison.Ordinal))
+            .Select(member => member.FullName)
+            .FirstOrDefault()
+        ?? AnonymousAttributeInCompiledCode(type);
+
+    /// <summary>
+    /// An attribute that implements IAllowAnonymous on any method, parameter or nested type, read by reflection:
+    /// ArchUnitNET folds lambdas into their declaring type but drops the attributes on them, and
+    /// <c>[AllowAnonymous] () =&gt; ...</c> is exactly how a minimal-API endpoint would opt out.
+    /// </summary>
+    private static string? AnonymousAttributeInCompiledCode(IType type)
+    {
+        var runtimeType = System.Reflection.Assembly.Load(type.Assembly.FullName).GetType(type.FullName.Replace('/', '+'));
+        return runtimeType is null ? null : AllTypes(runtimeType)
+            .SelectMany(t => t.GetMembers(System.Reflection.BindingFlags.DeclaredOnly | System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.Instance)
+                .SelectMany(member => member.CustomAttributes
+                    .Concat(member is System.Reflection.MethodBase method ? method.GetParameters().SelectMany(p => p.CustomAttributes) : []))
+                .Concat(t.CustomAttributes))
+            .Select(attribute => attribute.AttributeType)
+            .FirstOrDefault(attribute => AnonymousTypes.Contains(attribute.FullName) || attribute.GetInterfaces().Any(i => AnonymousTypes.Contains(i.FullName)))
+            ?.FullName;
+    }
+
+    private static IEnumerable<Type> AllTypes(Type type) =>
+        type.GetNestedTypes(System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.NonPublic).SelectMany(AllTypes).Prepend(type);
 
     private static string? SliceOf(IType type)
     {

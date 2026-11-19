@@ -33,6 +33,7 @@ public sealed class ArchitectureTests
         ["Agents references no connector"] = "Helmstead.Connectors.FixtureB.FixtureBType",
         ["Providers references no connector"] = "Helmstead.Connectors.FixtureB.FixtureBType",
         ["Providers references no Agents"] = "Helmstead.Agents.Fixture.AgentFixtureType",
+        ["No endpoint allows anonymous access"] = "AllowAnonymous",
     };
 
     public static TheoryData<string> RuleNames => [.. ArchitectureRules.All.Select(rule => rule.Name)];
@@ -64,6 +65,7 @@ public sealed class ArchitectureTests
                 "Agents references no connector",
                 "Providers references no connector",
                 "Providers references no Agents",
+                "No endpoint allows anonymous access",
             ],
             ArchitectureRules.All.Select(rule => rule.Name));
         Assert.Equal(ArchitectureRules.All.Select(rule => rule.Name).Order(), ExpectedViolation.Keys.Order());
@@ -125,6 +127,18 @@ public sealed class ArchitectureTests
         var failures = Rule("Queries never write").ToArchRule().Evaluate(Fixtures.Value).Where(result => !result.Passed).ToArray();
 
         Assert.Contains(failures, failure => failure.Description.Contains(writer, StringComparison.Ordinal));
+    }
+
+    [Theory]
+    [InlineData("AnonymousByExtension")]
+    [InlineData("AnonymousByAttribute")]
+    [InlineData("AnonymousByMetadata")]
+    [InlineData("AnonymousLambda")]
+    public void No_endpoint_allows_anonymous_access_catches_every_way_to_opt_out(string fixture)
+    {
+        var failures = Rule("No endpoint allows anonymous access").ToArchRule().Evaluate(Fixtures.Value).Where(result => !result.Passed).ToArray();
+
+        Assert.Contains(failures, failure => failure.Description.Contains($"Features.Open.{fixture}", StringComparison.Ordinal));
     }
 
     [Fact]

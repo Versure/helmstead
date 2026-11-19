@@ -5,14 +5,14 @@ using System.Xml.Linq;
 using ArchUnitNET.Domain;
 using ArchUnitNET.Loader;
 using Helmstead.Core.Api;
+using Helmstead.Core.Tests.Api;
 using Helmstead.Testing;
-using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace Helmstead.Core.Tests.Boundaries;
 
 /// <summary>Spec 003 criterion 15: tests in .NET do not reach the network.</summary>
-public sealed class NetworkRulesTests(WebApplicationFactory<Program> factory) : IClassFixture<WebApplicationFactory<Program>>
+public sealed class NetworkRulesTests(CoreApp factory) : IClassFixture<CoreApp>
 {
     // TEST-NET-1 (RFC 5737) is never routed, so even a guard that failed open would not reach a real host.
     private const string TestNet = "http://192.0.2.1/";
@@ -74,7 +74,7 @@ public sealed class NetworkRulesTests(WebApplicationFactory<Program> factory) : 
     [Fact]
     public async Task The_in_memory_WebApplicationFactory_client_still_works()
     {
-        using var client = factory.CreateClient();
+        using var client = factory.CreateAuthorizedClient();
 
         using var response = await client.GetAsync("/health");
 

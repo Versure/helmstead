@@ -2,16 +2,15 @@ using System.Net;
 using System.Reflection;
 using System.Text.Json;
 using Helmstead.Core.Api;
-using Microsoft.AspNetCore.Mvc.Testing;
 
 namespace Helmstead.Core.Tests.Api;
 
-public sealed class HealthEndpointTests(WebApplicationFactory<Program> factory) : IClassFixture<WebApplicationFactory<Program>>
+public sealed class HealthEndpointTests(CoreApp factory) : IClassFixture<CoreApp>
 {
     [Fact]
     public async Task Health_returns_ok_with_status_and_version_only()
     {
-        using var client = factory.CreateClient();
+        using var client = factory.CreateAuthorizedClient();
 
         using var response = await client.GetAsync("/health");
 
