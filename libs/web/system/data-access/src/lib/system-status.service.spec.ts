@@ -69,6 +69,11 @@ describe('SystemStatusService', () => {
         r.error(new ProgressEvent('error'), { status: 0 }),
     },
     {
+      what: 'a refused host or origin (403)',
+      fail: (r: ReturnType<HttpTestingController['expectOne']>) =>
+        r.flush(null, { status: 403, statusText: 'Forbidden' }),
+    },
+    {
       what: 'a timeout',
       fail: (r: ReturnType<HttpTestingController['expectOne']>) =>
         r.error(new ProgressEvent('timeout'), { status: 0 }),
@@ -80,6 +85,17 @@ describe('SystemStatusService', () => {
     await TestBed.inject(ApplicationRef).whenStable();
 
     expect(service.status()).toEqual({ state: 'unreachable' });
+  });
+
+  it('is rejected when the core refuses the session token (401)', async () => {
+    const service = setup();
+
+    http
+      .expectOne('/health')
+      .flush(null, { status: 401, statusText: 'Unauthorized' });
+    await TestBed.inject(ApplicationRef).whenStable();
+
+    expect(service.status()).toEqual({ state: 'rejected' });
   });
 
   it('re-issues the request on retry', async () => {

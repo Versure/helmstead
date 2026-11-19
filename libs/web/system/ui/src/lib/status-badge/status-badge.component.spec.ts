@@ -48,6 +48,31 @@ describe('StatusBadgeComponent', () => {
     expect(retried).toBe(1);
   });
 
+  it('shows Core refused this session with advice and a Retry button', async () => {
+    const { fixture, element, pill } = await render({ state: 'rejected' });
+    let retried = 0;
+    fixture.componentInstance.retry.subscribe(() => retried++);
+
+    expect(pill?.textContent?.trim()).toBe('Core refused this session');
+    expect(pill?.getAttribute('title')).toBe(
+      'Restart Helmstead to start a new session',
+    );
+    expect(pill?.classList).toContain('pill--danger');
+    const button = element.querySelector('button');
+    expect(button?.textContent?.trim()).toBe('Retry');
+
+    button?.click();
+    expect(retried).toBe(1);
+  });
+
+  it('announces the refused session through the status region', async () => {
+    const { element } = await render({ state: 'rejected' });
+
+    const region = element.querySelector('[role="status"]');
+    expect(region?.getAttribute('aria-live')).toBe('polite');
+    expect(region?.textContent).toContain('Core refused this session');
+  });
+
   it('announces changes politely to screen readers', async () => {
     const { element } = await render({ state: 'connecting' });
 
